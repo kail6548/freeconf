@@ -28,7 +28,7 @@ jobs:
             echo "⬇️ دریافت از $url"
             content=$(curl -s "$url")
 
-            # چک کردن اینکه محتوا base64 هست یا خیر
+            # چک کردن اینکه محتوا base64 هست یا نه
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
               decoded=$(echo "$content" | base64 -d 2>/dev/null || echo "")
               if [ -n "$decoded" ]; then
@@ -36,7 +36,7 @@ jobs:
               fi
             fi
 
-            # استخراج همه کانفیگ‌هایی که با پروتکل شروع می‌شوند
+            # استخراج کانفیگ‌ها
             configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
             echo "$configs" >> combined.txt
 
@@ -66,21 +66,19 @@ jobs:
 
           RAW_LINK="https://raw.githubusercontent.com/${{ github.repository }}/main/combined.txt"
 
-          cat <<EOF > README.md
-# 🔗 Combined Subscription (Base64)
-
-This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours.
-
-## 📥 Direct Subscription Link
-
-Copy this link and paste it into your client:
-
-\`\`\`
-$RAW_LINK
-\`\`\`
-
-Updated automatically via GitHub Actions.
-EOF
+          echo "# 🔗 Combined Subscription (Base64)" > README.md
+          echo "" >> README.md
+          echo "This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours." >> README.md
+          echo "" >> README.md
+          echo "## 📥 Direct Subscription Link" >> README.md
+          echo "" >> README.md
+          echo "Copy this link and paste it into your client:" >> README.md
+          echo "" >> README.md
+          echo "\`\`\`" >> README.md
+          echo "$RAW_LINK" >> README.md
+          echo "\`\`\`" >> README.md
+          echo "" >> README.md
+          echo "Updated automatically via GitHub Actions." >> README.md
 
       - name: Commit and push if changed
         env:
