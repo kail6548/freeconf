@@ -1,0 +1,42 @@
+name: Combine Subscription Files
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # هر 6 ساعت اجرا می‌شود
+  workflow_dispatch:      # امکان اجرای دستی از تب Actions
+
+jobs:
+  combine:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Combine subscription configs
+        run: |
+          # خواندن ۳ خط اول برای هدرها
+          HEADER_LINES=$(head -n 3 myfeeds.txt)
+
+          # خواندن لینک‌ها (خط 5 به بعد)
+          tail -n +5 myfeeds.txt > urls.txt
+
+          # ایجاد یا پاک کردن فایل خروجی و نوشتن هدرها
+          echo "$HEADER_LINES" > combined.txt
+
+          # خواندن هر لینک و استخراج خطوط vless و vmess
+          while read url; do
+            echo "Fetching $url"
+            curl -s "$url" | grep -E '^(vless|vmess)://' >> combined.txt
+          done < urls.txt
+
+          # محدود کردن تعداد کانفیگ (مثلاً ۲۰۰)
+          head -n 203 combined.txt > temp.txt && mv temp.txt combined.txt
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add combined.txt
+          git diff --quiet && echo "No changes to commit" || git commit -m "Auto update combined subscription"
+          git push
