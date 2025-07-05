@@ -15,6 +15,13 @@ jobs:
 
       - name: Combine configs
         run: |
+          echo "بررسی وجود فایل combined.txt قبل از ساخت:"
+          if [ -f combined.txt ]; then
+            echo "فایل combined.txt قبلا وجود دارد."
+          else
+            echo "فایل combined.txt وجود ندارد. قراره ساخته شود."
+          fi
+
           echo "📄 خواندن هدرهای myfeeds.txt"
           HEADER_LINES=$(grep '^//' myfeeds.txt)
 
@@ -24,14 +31,11 @@ jobs:
           echo "📝 نوشتن هدرها در combined.txt"
           echo "$HEADER_LINES" > combined.txt
 
-          COUNT=0
-          MAX=200000  # محدودیت بسیار بالا (در صورت نیاز، این بخش رو از حالت کامنت خارج کن)
-
           while read url; do
             echo "⬇️ دریافت از $url"
             content=$(curl -s "$url")
 
-            # تشخیص محتوا base64 بودن
+            # تشخیص محتوا base64 بودن محتوا
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=\n\r]+$'; then
               decoded=$(echo "$content" | base64 -d 2>/dev/null)
               if [ $? -eq 0 ] && [ -n "$decoded" ]; then
@@ -44,26 +48,28 @@ jobs:
 
             echo "$configs" >> combined.txt
 
-            # شمارش تعداد کانفیگ‌ها
-            COUNT=$((COUNT + $(echo "$configs" | wc -l)))
-
-            # محدودیت تعداد (در صورت نیاز این بخش رو فعال کن)
-            # if [ "$COUNT" -ge "$MAX" ]; then
-            #   echo "🚫 رسیدن به حد $MAX کانفیگ. متوقف می‌شه."
-            #   break
-            # fi
-
-            # توقف برای جلوگیری از rate limit (در صورت نیاز فعال کن)
-            # sleep 1
-
+            # sleep 1 # برای جلوگیری از rate limit در صورت نیاز فعال شود
           done < urls.txt
 
+          echo "📄 محتوای combined.txt (10 خط اول):"
+          head -n 10 combined.txt
+
+          echo "📊 تعداد کل خطوط combined.txt:"
+          wc -l combined.txt
+
       - name: Commit and push combined.txt
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add combined.txt
 
-          git diff --quiet && echo "✅ بدون تغییر، نیازی به commit نیست." || git commit -m "🔄 Auto update combined subscription"
-          git push
+          echo "وضعیت git بعد از افزودن combined.txt:"
+          git status
+
+          git diff --quiet && echo "✅ بدون تغییر، نیازی به commit نیست." || (
+            git commit -m "🔄 Auto update combined subscription" &&
+            git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }} HEAD:main
+          )
