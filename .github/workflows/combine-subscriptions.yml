@@ -28,7 +28,6 @@ jobs:
             echo "⬇️ دریافت از $url"
             content=$(curl -s "$url")
 
-            # چک کردن اینکه محتوا base64 هست یا نه
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
               decoded=$(echo "$content" | base64 -d 2>/dev/null || echo "")
               if [ -n "$decoded" ]; then
@@ -36,7 +35,6 @@ jobs:
               fi
             fi
 
-            # استخراج کانفیگ‌ها
             configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
             echo "$configs" >> combined.txt
 
@@ -57,33 +55,23 @@ jobs:
       - name: ساخت فایل combined_random.txt با ۵۰۰ کانفیگ رندوم
         run: |
           echo "🎲 انتخاب ۵۰۰ کانفیگ رندوم از combined.txt"
-          # خواندن هدرها (خط‌هایی که با // شروع میشن)
           head -n $(grep -n -m1 -v '^//' combined.txt | cut -d: -f1) combined.txt > random_header.txt || echo "" > random_header.txt
-
-          # اضافه کردن خط هدر جدید برای random 500 با نام Free_Config (500 random)
           echo "//profile-title: Free_Config (500 random)" >> random_header.txt
-
-          # استخراج کانفیگ‌ها بدون هدر
           tail -n +$(( $(grep -n -m1 -v '^//' combined.txt | cut -d: -f1) + 1 )) combined.txt > configs_only.txt
 
           total_lines=$(wc -l < configs_only.txt)
-
           if [ "$total_lines" -le 500 ]; then
-            echo "تعداد کانفیگ‌ها کمتر از ۵۰۰ است، همه را در فایل رندوم می‌ریزیم."
             cat configs_only.txt > random_configs.txt
           else
             shuf -n 500 configs_only.txt > random_configs.txt
           fi
 
-          # ساخت فایل نهایی random با هدر
           cat random_header.txt random_configs.txt > combined_random.txt
-
-          # پاکسازی فایل‌های موقت
           rm -f random_header.txt configs_only.txt random_configs.txt
 
       - name: Encode combined.txt to base64 (overwrite original)
         run: |
-          echo "🔐 تبدیل combined.txt به base64 و جایگزینی با خودش..."
+          echo "🔐 تبدیل combined.txt به base64..."
           base64 -w 0 combined.txt > tmp.txt && mv tmp.txt combined.txt
           echo "✅ فایل base64 شده در combined.txt ذخیره شد."
 
@@ -97,8 +85,8 @@ jobs:
         run: |
           echo "📘 ساخت README.md با لینک‌های مستقیم"
 
-          RAW_LINK_COMBINED="https://raw.githubusercontent.com/${{ github.repository }}/main/combined.txt"
-          RAW_LINK_RANDOM="https://raw.githubusercontent.com/${{ github.repository }}/main/combined_random.txt"
+          RAW_LINK_COMBINED="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/combined.txt"
+          RAW_LINK_RANDOM="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/combined_random.txt"
 
           echo "# 🔗 Combined Subscription (Base64)" > README.md
           echo "" >> README.md
@@ -132,4 +120,4 @@ jobs:
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
             git commit -m "🔄 Auto update combined files and README with random sample"
-            git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }} HEAD:main
+            git push https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY} HEAD:main
