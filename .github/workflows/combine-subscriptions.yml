@@ -28,6 +28,7 @@ jobs:
             echo "⬇️ دریافت از $url"
             content=$(curl -s "$url")
 
+            # چک کردن اینکه محتوا base64 هست یا نه
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
               decoded=$(echo "$content" | base64 -d 2>/dev/null || echo "")
               if [ -n "$decoded" ]; then
@@ -35,6 +36,7 @@ jobs:
               fi
             fi
 
+            # استخراج کانفیگ‌ها
             configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
             echo "$configs" >> combined.txt
 
@@ -55,15 +57,17 @@ jobs:
       - name: Create combined_random.txt with 500 random configs
         run: |
           echo "🎲 ایجاد فایل combined_random.txt با ۵۰۰ کانفیگ رندوم"
+          # گرفتن شماره خط اول بدون // (پایان هدر)
           HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
+          # گرفتن هدر
           head -n "$HEADER_END" combined.txt > random_header.txt
-
+          # استخراج profile-title از فایل اصلی و اضافه کردن (500 random)
           ORIGINAL_TITLE=$(grep -i '^//profile-title:' combined.txt | head -n1 | cut -d':' -f2- | xargs)
           if [ -z "$ORIGINAL_TITLE" ]; then
             ORIGINAL_TITLE="Free_Config"
           fi
           echo "//profile-title: ${ORIGINAL_TITLE} (500 random)" >> random_header.txt
-
+          # گرفتن کانفیگ‌ها (بدون هدر)
           tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
           TOTAL_LINES=$(wc -l < configs_only.txt)
           if [ "$TOTAL_LINES" -le 500 ]; then
@@ -71,7 +75,6 @@ jobs:
           else
             shuf -n 500 configs_only.txt > random_configs.txt
           fi
-
           cat random_header.txt random_configs.txt > combined_random.txt
           rm -f random_header.txt configs_only.txt random_configs.txt
 
@@ -96,7 +99,7 @@ jobs:
 
           echo "# 🔗 Combined Subscription (Base64)" > README.md
           echo "" >> README.md
-          echo "This repository auto-generates deduplicated, base64-encoded subscription files every 2 hours." >> README.md
+          echo "This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours." >> README.md
           echo "" >> README.md
           echo "## 📥 Direct Subscription Links" >> README.md
           echo "" >> README.md
@@ -123,5 +126,5 @@ jobs:
           if git diff --cached --quiet; then
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
-            git commit -m "🔄 Auto update combined files (base64) and README"
+            git commit -m "🔄 Auto update combined.txt (base64) and combined_random.txt + README"
             git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }} HEAD:main
