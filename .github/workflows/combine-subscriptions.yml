@@ -2,7 +2,7 @@ name: Combine Subscription Files
 
 on:
   schedule:
-    - cron: '0 */2 * * *'   # هر ۲ ساعت اجرا شود
+    - cron: '0 */2 * * *'   # اجرا هر ۲ ساعت
   workflow_dispatch:
 
 jobs:
@@ -40,7 +40,6 @@ jobs:
             configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
             echo "$configs" >> combined.txt
 
-            # sleep 1
           done < urls.txt
 
       - name: حذف کانفیگ‌های تکراری (Python)
@@ -55,6 +54,34 @@ jobs:
           echo "📊 تعداد خطوط combined.txt:"
           wc -l combined.txt
 
+      - name: Encode combined.txt to base64 (overwrite original)
+        run: |
+          echo "🔐 تبدیل combined.txt به base64 و جایگزینی با خودش..."
+          base64 -w 0 combined.txt > tmp.txt && mv tmp.txt combined.txt
+          echo "✅ فایل base64 شده در combined.txt ذخیره شد."
+
+      - name: Generate README with subscription link
+        run: |
+          echo "📘 ساخت README.md با لینک مستقیم combined.txt"
+
+          RAW_LINK="https://raw.githubusercontent.com/${{ github.repository }}/main/combined.txt"
+
+          cat <<EOF > README.md
+# 🔗 Combined Subscription (Base64)
+
+This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours.
+
+## 📥 Direct Subscription Link
+
+Copy this link and paste it into your client:
+
+\`\`\`
+$RAW_LINK
+\`\`\`
+
+Updated automatically via GitHub Actions.
+EOF
+
       - name: Commit and push if changed
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -62,10 +89,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add combined.txt
+          git add combined.txt README.md
           if git diff --cached --quiet; then
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
-            git commit -m "🔄 Auto update combined subscription"
+            git commit -m "🔄 Auto update combined.txt (base64) and README"
             git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }} HEAD:main
-          fi
