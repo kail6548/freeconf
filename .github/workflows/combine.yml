@@ -2,7 +2,7 @@ name: Combine Subscription Files
 
 on:
   schedule:
-    - cron: '0 */2 * * *'      # اجرا هر 2 ساعت
+    - cron: '0 */2 * * *'      # اجرا هر ۲ ساعت
   workflow_dispatch:
 
 jobs:
@@ -15,13 +15,6 @@ jobs:
 
       - name: Combine configs
         run: |
-          echo "بررسی وجود فایل combined.txt قبل از ساخت:"
-          if [ -f combined.txt ]; then
-            echo "فایل combined.txt قبلا وجود دارد."
-          else
-            echo "فایل combined.txt وجود ندارد. قراره ساخته شود."
-          fi
-
           echo "📄 خواندن هدرهای myfeeds.txt"
           HEADER_LINES=$(grep '^//' myfeeds.txt)
 
@@ -35,23 +28,40 @@ jobs:
             echo "⬇️ دریافت از $url"
             content=$(curl -s "$url")
 
-            if echo "$content" | grep -qE '^[A-Za-z0-9+/=\n\r]+$'; then
+            if echo "$content" | grep -qE '^[A-Za-z0-9+/=]+$'; then
               decoded=$(echo "$content" | base64 -d 2>/dev/null)
               if [ $? -eq 0 ] && [ -n "$decoded" ]; then
                 content="$decoded"
               fi
             fi
 
-            configs=$(echo "$content" | grep -E '^(vless|vmess)://' || true)
-
+            configs=$(echo "$content" | grep -E '^(vless|vmess|trojan|ss|socks|hysteria|tuic)://' || true)
             echo "$configs" >> combined.txt
 
-            # sleep 1  # اگر نیاز به جلوگیری از محدودیت‌ها بود فعال کن
+            # sleep 1  # ← اگر نیاز شد، برای ریت‌لیمیت کامنت بردار
           done < urls.txt
 
-          echo "🧹 حذف کانفیگ‌های تکراری از combined.txt"
-          sort combined.txt | uniq > combined_unique.txt
-          mv combined_unique.txt combined.txt
+      - name: Remove duplicates via Python
+        run: |
+          echo "🧹 حذف کانفیگ‌های تکراری با پایتون (بر اساس URI بدون #tag)"
+          python3 <<'EOF' < combined.txt > combined_cleaned.txt
+import sys
+seen = set()
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    if line.startswith("//"):
+        print(line)
+        continue
+    if "://" not in line:
+        continue
+    key = line.split('#')[0].lower()
+    if key not in seen:
+        seen.add(key)
+        print(line)
+EOF
+          mv combined_cleaned.txt combined.txt
 
           echo "📄 محتوای combined.txt (10 خط اول):"
           head -n 10 combined.txt
@@ -67,10 +77,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add combined.txt
-
-          echo "وضعیت git بعد از افزودن combined.txt:"
-          git status
-
           git diff --cached --quiet && echo "✅ بدون تغییر، نیازی به commit نیست." || (
             git commit -m "🔄 Auto update combined subscription" &&
             git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }} HEAD:main
