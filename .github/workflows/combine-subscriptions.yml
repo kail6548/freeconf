@@ -1,0 +1,71 @@
+name: Combine Subscription Files
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'  # هر 2 ساعت اجرا می‌شود
+  workflow_dispatch:
+
+jobs:
+  combine:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Extract URLs from feeds files
+        run: |
+          echo "🌐 استخراج لینک‌ها از همه فایل‌های feeds"
+          mkdir -p output
+          grep -hE '^https?://' feeds/*.txt | sort | uniq > urls.txt
+          grep -h '^//' feeds/*.txt | sort | uniq > header.txt
+
+      - name: Download and combine configs
+        run: |
+          echo "📝 نوشتن هدرها در output/combined.txt"
+          cat header.txt > output/combined.txt
+
+          while read -r url; do
+            echo "⬇️ دریافت از $url"
+            content=$(curl -s "$url")
+
+            # چک کردن base64 بودن و دیکد کردن اگر هست
+            if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
+              decoded=$(echo "$content" | base64 -d 2>/dev/null || echo "")
+              if [ -n "$decoded" ]; then
+                content="$decoded"
+              fi
+            fi
+
+            # استخراج خطوط کانفیگ که با پروتکل شروع میشه
+            configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
+            echo "$configs" >> output/combined.txt
+          done < urls.txt
+
+      - name: Remove duplicate configs with Python
+        run: |
+          echo "🔍 حذف کانفیگ‌های تکراری..."
+          python3 scripts/remove_duplicates.py output/combined.txt output/combined_cleaned.txt
+
+      - name: Encode combined file to base64
+        run: |
+          base64 output/combined_cleaned.txt > output/combined_base64.txt
+
+      - name: Generate README file
+        run: |
+          python3 scripts/generate_readme.py output/combined_cleaned.txt README.md
+
+      - name: Commit and push if changed
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add output/combined_base64.txt README.md
+          if git diff --cached --quiet; then
+            echo "✅ بدون تغییر، نیازی به commit نیست."
+          else
+            git commit -m "🔄 Auto update combined subscription and README"
+            git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }} HEAD:main
+          fi
