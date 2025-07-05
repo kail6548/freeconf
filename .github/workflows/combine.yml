@@ -2,66 +2,68 @@ name: Combine Subscription Files
 
 on:
   schedule:
-    - cron: '0 */2 * * *'      # اجرا هر ۲ ساعت
-  workflow_dispatch:           # اجرا دستی
+    - cron: '0 */2 * * *'      # اجرا هر 2 ساعت
+  workflow_dispatch:
 
 jobs:
   combine:
     runs-on: ubuntu-latest
 
     steps:
-      # مرحله ۱: دریافت سورس ریپو
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # مرحله ۲: ترکیب کانفیگ‌ها
       - name: Combine configs
         run: |
           echo "📄 خواندن هدرهای myfeeds.txt"
           HEADER_LINES=$(grep '^//' myfeeds.txt)
 
-          echo "🌐 استخراج لینک‌ها از myfeeds.txt"
-          grep '^http' myfeeds.txt > urls.txt
+          echo "🌐 استخراج لینک‌ها (فقط خطوط لینک)"
+          grep -E '^https?://' myfeeds.txt > urls.txt
 
           echo "📝 نوشتن هدرها در combined.txt"
           echo "$HEADER_LINES" > combined.txt
 
-          echo "🔁 شروع دانلود و فیلتر کانفیگ‌ها"
           COUNT=0
-          MAX=200000  # محدودیت بسیار بالا (تقریباً بی‌نهایت)
+          MAX=200000  # محدودیت بسیار بالا (در صورت نیاز، این بخش رو از حالت کامنت خارج کن)
 
           while read url; do
             echo "⬇️ دریافت از $url"
             content=$(curl -s "$url")
 
-            # فقط خطوطی که با vless:// یا vmess:// شروع می‌شن
-            configs=$(echo "$content" | grep -E '^(vless|vmess)://')
+            # تشخیص محتوا base64 بودن
+            if echo "$content" | grep -qE '^[A-Za-z0-9+/=\n\r]+$'; then
+              decoded=$(echo "$content" | base64 -d 2>/dev/null)
+              if [ $? -eq 0 ] && [ -n "$decoded" ]; then
+                content="$decoded"
+              fi
+            fi
 
-            # افزودن به فایل خروجی
+            # استخراج کانفیگ‌ها
+            configs=$(echo "$content" | grep -E '^(vless|vmess)://' || true)
+
             echo "$configs" >> combined.txt
 
-            # شمارش کانفیگ‌ها
+            # شمارش تعداد کانفیگ‌ها
             COUNT=$((COUNT + $(echo "$configs" | wc -l)))
 
-            # ❗ اگر می‌خوای محدودیت داشته باشه، این بخش رو از حالت کامنت خارج کن
+            # محدودیت تعداد (در صورت نیاز این بخش رو فعال کن)
             # if [ "$COUNT" -ge "$MAX" ]; then
             #   echo "🚫 رسیدن به حد $MAX کانفیگ. متوقف می‌شه."
             #   break
             # fi
 
-            # 💤 اگر می‌خوای بین درخواست‌ها فاصله باشه برای جلوگیری از rate limit، این خط رو فعال کن:
+            # توقف برای جلوگیری از rate limit (در صورت نیاز فعال کن)
             # sleep 1
 
           done < urls.txt
 
-      # مرحله ۳: commit و push در صورت تغییر فایل combined.txt
       - name: Commit and push combined.txt
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           git add combined.txt
 
-          # فقط اگه فایل تغییر کرده بود commit کن
           git diff --quiet && echo "✅ بدون تغییر، نیازی به commit نیست." || git commit -m "🔄 Auto update combined subscription"
           git push
