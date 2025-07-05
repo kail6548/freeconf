@@ -40,7 +40,7 @@ jobs:
             configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
             echo "$configs" >> combined.txt
 
-            # sleep 1  # اگر لازم بود، محدودیت سرعت بذار
+            # sleep 1
           done < urls.txt
 
       - name: حذف کانفیگ‌های تکراری (Python)
