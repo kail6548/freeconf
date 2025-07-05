@@ -2,6 +2,8 @@ import sys
 import re
 import os
 from collections import defaultdict
+import base64
+from urllib.parse import urlparse
 
 def normalize_config(line):
     return line.strip()
@@ -11,16 +13,30 @@ def extract_protocol(line):
     return m.group(1).lower() if m else "unknown"
 
 def extract_country(line):
-    # فرض: کشور داخل براکت بزرگ [US], [IR] و ...
     m = re.search(r'\[([A-Z]{2})\]', line)
     return m.group(1) if m else "unknown"
 
 def extract_security(line):
-    # فرض: "tls" یا "notls" در کانفیگ وجود دارد یا خیر
+    # نمونه ساده، بهبود دلخواه
     if "tls" in line.lower():
         return "tls"
     else:
         return "notls"
+
+def save_base64_file(path, lines):
+    data = "\n".join(lines).encode('utf-8')
+    b64data = base64.b64encode(data).decode('utf-8')
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(b64data)
+
+def parse_github_url(repo_url):
+    # مثال: https://github.com/username/reponame
+    parts = urlparse(repo_url)
+    path_parts = parts.path.strip('/').split('/')
+    if len(path_parts) >= 2:
+        return path_parts[0], path_parts[1]
+    else:
+        return None, None
 
 def main(input_file, output_dir, repo_url):
     os.makedirs(output_dir, exist_ok=True)
@@ -40,7 +56,6 @@ def main(input_file, output_dir, repo_url):
             seen.add(norm)
             configs.append(norm)
 
-    # دسته‌بندی
     by_protocol = defaultdict(list)
     by_country = defaultdict(list)
     by_security = defaultdict(list)
@@ -53,33 +68,23 @@ def main(input_file, output_dir, repo_url):
         by_country[co].append(c)
         by_security[se].append(c)
 
-    # تابع ذخیره فایل‌ها با base64
-    import base64
-
-    def save_base64_file(path, lines):
-        data = "\n".join(lines).encode('utf-8')
-        b64data = base64.b64encode(data).decode('utf-8')
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(b64data)
-
-    # ذخیره همه در یک فایل
     save_base64_file(os.path.join(output_dir, "combined_base64.txt"), configs)
 
-    # ذخیره بر اساس پروتکل
     for k, v in by_protocol.items():
         save_base64_file(os.path.join(output_dir, "protocol", f"{k}.txt"), v)
 
-    # ذخیره بر اساس کشور
     for k, v in by_country.items():
         save_base64_file(os.path.join(output_dir, "country", f"{k}.txt"), v)
 
-    # ذخیره بر اساس امنیت
     for k, v in by_security.items():
         save_base64_file(os.path.join(output_dir, "security", f"{k}.txt"), v)
 
-    # ساخت README با لینک فایل‌ها
-    # فرض می‌کنیم repo_url مثل "https://github.com/username/repo" است و branch main است
-    raw_base = repo_url.rstrip('/') + "/raw/main/" + output_dir + "/"
+    repo_owner, repo_name = parse_github_url(repo_url)
+    if not repo_owner or not repo_name:
+        print("❌ Invalid GitHub repo URL")
+        return
+
+    raw_base = f"https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/{output_dir}/"
 
     def file_link(path):
         return f"{raw_base}{path}"
