@@ -94,8 +94,6 @@ jobs:
           echo "" >> README.md
           echo "## 📥 Direct Subscription Links" >> README.md
           echo "" >> README.md
-          echo "Copy these links and paste them into your clients:" >> README.md
-          echo "" >> README.md
           echo "### Full combined file:" >> README.md
           echo '```' >> README.md
           echo "$RAW_LINK_COMBINED" >> README.md
@@ -115,9 +113,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          REPO="${GITHUB_REPOSITORY}"
+
           git add combined.txt combined_random.txt README.md
           if git diff --cached --quiet; then
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
             git commit -m "🔄 Auto update combined files and README with random sample"
-            git push https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY} HEAD:main
+            git push https://x-access-token:${TOKEN}@github.com/${REPO} HEAD:main
