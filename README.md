@@ -1,13 +1,6 @@
-# 🔗 Combined Subscription (Base64)
+# Subscription Files
 
-This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours.
+## لینک فایل‌ها:
 
-## 📥 Direct Subscription Link
-
-Copy this link and paste it into your client:
-
-```
-https://raw.githubusercontent.com/kail6548/freeconf/main/combined.txt
-```
-
-Updated automatically via GitHub Actions.
+- [combined.txt](https://github.com/kail6548/freeconf/blob/main/combined.txt)
+- [combined_random.txt](https://github.com/kail6548/freeconf/blob/main/combined_random.txt)
