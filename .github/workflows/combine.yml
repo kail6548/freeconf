@@ -46,8 +46,12 @@ jobs:
 
             echo "$configs" >> combined.txt
 
-            # sleep 1  # برای جلوگیری از rate limit در صورت نیاز فعال شود
+            # sleep 1  # اگر نیاز به جلوگیری از محدودیت‌ها بود فعال کن
           done < urls.txt
+
+          echo "🧹 حذف کانفیگ‌های تکراری از combined.txt"
+          sort combined.txt | uniq > combined_unique.txt
+          mv combined_unique.txt combined.txt
 
           echo "📄 محتوای combined.txt (10 خط اول):"
           head -n 10 combined.txt
