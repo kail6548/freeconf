@@ -57,9 +57,13 @@ jobs:
       - name: Create combined_random.txt with 500 random configs
         run: |
           echo "🎲 ایجاد فایل combined_random.txt با ۵۰۰ کانفیگ رندوم"
+          
           HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
-          head -n "$HEADER_END" combined.txt > random_header.txt
 
+          # حذف profile-title از هدر
+          head -n "$HEADER_END" combined.txt | grep -v '^//profile-title:' > random_header.txt
+
+          # افزودن عنوان جدید مخصوص فایل رندوم
           echo "//profile-title: Free_Config_Random" >> random_header.txt
 
           tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
@@ -69,6 +73,7 @@ jobs:
           else
             shuf -n 500 configs_only.txt > random_configs.txt
           fi
+
           cat random_header.txt random_configs.txt > combined_random.txt
           rm -f random_header.txt configs_only.txt random_configs.txt
 
