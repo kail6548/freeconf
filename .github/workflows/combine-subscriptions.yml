@@ -2,7 +2,7 @@ name: Combine Subscription Files
 
 on:
   schedule:
-    - cron: '0 */2 * * *'   # اجرا هر ۲ ساعت
+    - cron: '0 */2 * * *'  # هر ۲ ساعت اجرا شود
   workflow_dispatch:
 
 jobs:
@@ -55,18 +55,21 @@ jobs:
       - name: ساخت فایل combined_random.txt با ۵۰۰ کانفیگ رندوم
         run: |
           echo "🎲 انتخاب ۵۰۰ کانفیگ رندوم از combined.txt"
-          head -n $(grep -n -m1 -v '^//' combined.txt | cut -d: -f1) combined.txt > random_header.txt || echo "" > random_header.txt
+          HEADER_END_LINE=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
+          head -n "$HEADER_END_LINE" combined.txt > random_header.txt
           echo "//profile-title: Free_Config (500 random)" >> random_header.txt
-          tail -n +$(( $(grep -n -m1 -v '^//' combined.txt | cut -d: -f1) + 1 )) combined.txt > configs_only.txt
 
-          total_lines=$(wc -l < configs_only.txt)
-          if [ "$total_lines" -le 500 ]; then
-            cat configs_only.txt > random_configs.txt
+          tail -n +$((HEADER_END_LINE + 1)) combined.txt > configs_only.txt
+
+          TOTAL_LINES=$(wc -l < configs_only.txt)
+          if [ "$TOTAL_LINES" -le 500 ]; then
+            cp configs_only.txt random_configs.txt
           else
             shuf -n 500 configs_only.txt > random_configs.txt
           fi
 
           cat random_header.txt random_configs.txt > combined_random.txt
+
           rm -f random_header.txt configs_only.txt random_configs.txt
 
       - name: Encode combined.txt to base64 (overwrite original)
