@@ -60,11 +60,7 @@ jobs:
           HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
           head -n "$HEADER_END" combined.txt > random_header.txt
 
-          ORIGINAL_TITLE=$(grep -i '^//profile-title:' combined.txt | head -n1 | cut -d':' -f2- | xargs)
-          if [ -z "$ORIGINAL_TITLE" ]; then
-            ORIGINAL_TITLE="Free_Config"
-          fi
-          echo "//profile-title: ${ORIGINAL_TITLE} (500 random)" >> random_header.txt
+          echo "//profile-title: Free_Config_Random" >> random_header.txt
 
           tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
           TOTAL_LINES=$(wc -l < configs_only.txt)
