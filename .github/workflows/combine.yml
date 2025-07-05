@@ -2,7 +2,7 @@ name: Combine Subscription Files
 
 on:
   schedule:
-    - cron: '0 */2 * * *'      # هر ۲ ساعت اجرا شود
+    - cron: '0 */2 * * *'   # هر ۲ ساعت اجرا می‌شود
   workflow_dispatch:
 
 jobs:
@@ -10,42 +10,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: 📥 Combine configs from all URLs
+      - name: Combine configs from URLs
         run: |
           echo "📄 خواندن هدرهای myfeeds.txt"
           HEADER_LINES=$(grep '^//' myfeeds.txt)
 
-          echo "🌐 استخراج لینک‌ها از myfeeds.txt"
+          echo "🌐 استخراج لینک‌ها"
           grep -E '^https?://' myfeeds.txt > urls.txt
 
           echo "📝 نوشتن هدرها در combined.txt"
           echo "$HEADER_LINES" > combined.txt
 
-          while read url; do
+          while read -r url; do
             echo "⬇️ دریافت از $url"
             content=$(curl -s "$url")
 
-            # بررسی اگر محتوا base64 است، دیکد شود
-            if echo "$content" | grep -qE '^[A-Za-z0-9+/=]+$'; then
-              decoded=$(echo "$content" | base64 -d 2>/dev/null)
-              if [ $? -eq 0 ] && [ -n "$decoded" ]; then
+            # چک کردن اینکه محتوا base64 هست یا خیر
+            if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
+              decoded=$(echo "$content" | base64 -d 2>/dev/null || echo "")
+              if [ -n "$decoded" ]; then
                 content="$decoded"
               fi
             fi
 
-            # استخراج همه کانفیگ‌هایی که با proto:// شروع می‌شوند
+            # استخراج همه کانفیگ‌هایی که با پروتکل شروع می‌شوند
             configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
             echo "$configs" >> combined.txt
 
-            # sleep 1  # ← برای محدود کردن سرعت، اگر لازم شد فعال کن
+            # sleep 1  # اگر لازم بود، محدودیت سرعت بذار
           done < urls.txt
 
-      - name: 🧹 حذف کانفیگ‌های تکراری (Python)
+      - name: حذف کانفیگ‌های تکراری (Python)
         run: |
-          echo "🔍 در حال حذف کانفیگ‌های تکراری..."
+          echo "🔍 حذف کانفیگ‌های تکراری..."
           python3 - <<EOF > combined_cleaned.txt
 seen = set()
 with open("combined.txt", "r") as f:
@@ -65,13 +65,13 @@ with open("combined.txt", "r") as f:
 EOF
           mv combined_cleaned.txt combined.txt
 
-          echo "📄 پیش‌نمایش combined.txt (10 خط اول):"
+          echo "📄 نمایش 10 خط اول combined.txt:"
           head -n 10 combined.txt
 
-          echo "📊 تعداد خطوط نهایی:"
+          echo "📊 تعداد خطوط combined.txt:"
           wc -l combined.txt
 
-      - name: 💾 Commit and push if changed
+      - name: Commit and push if changed
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
@@ -79,7 +79,9 @@ EOF
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add combined.txt
-          git diff --cached --quiet && echo "✅ بدون تغییر، نیازی به commit نیست." || (
-            git commit -m "🔄 Auto update combined subscription" &&
+          if git diff --cached --quiet; then
+            echo "✅ بدون تغییر، نیازی به commit نیست."
+          else
+            git commit -m "🔄 Auto update combined subscription"
             git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }} HEAD:main
-          )
+          fi
