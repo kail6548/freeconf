@@ -57,17 +57,15 @@ jobs:
       - name: Create combined_random.txt with 500 random configs
         run: |
           echo "🎲 ایجاد فایل combined_random.txt با ۵۰۰ کانفیگ رندوم"
-          # گرفتن شماره خط اول بدون // (پایان هدر)
           HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
-          # گرفتن هدر
           head -n "$HEADER_END" combined.txt > random_header.txt
-          # استخراج profile-title از فایل اصلی و اضافه کردن (500 random)
+
           ORIGINAL_TITLE=$(grep -i '^//profile-title:' combined.txt | head -n1 | cut -d':' -f2- | xargs)
           if [ -z "$ORIGINAL_TITLE" ]; then
             ORIGINAL_TITLE="Free_Config"
           fi
           echo "//profile-title: ${ORIGINAL_TITLE} (500 random)" >> random_header.txt
-          # گرفتن کانفیگ‌ها (بدون هدر)
+
           tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
           TOTAL_LINES=$(wc -l < configs_only.txt)
           if [ "$TOTAL_LINES" -le 500 ]; then
@@ -123,8 +121,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add combined.txt combined_random.txt README.md
+
           if git diff --cached --quiet; then
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
             git commit -m "🔄 Auto update combined.txt (base64) and combined_random.txt + README"
-            git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }} HEAD:main
+            git push "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}" HEAD:main
+          fi
