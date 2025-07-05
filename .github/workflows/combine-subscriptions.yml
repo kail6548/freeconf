@@ -60,12 +60,15 @@ jobs:
           
           HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
 
-          # حذف profile-title از هدر
-          head -n "$HEADER_END" combined.txt | grep -v '^//profile-title:' > random_header.txt
+          # حذف profile-title و نگه‌داشتن بقیه‌ی هدر
+          grep '^//' combined.txt | grep -v '^//profile-title:' > temp_header.txt
 
-          # افزودن عنوان جدید مخصوص فایل رندوم
-          echo "//profile-title: Free_Config_Random" >> random_header.txt
+          # اضافه کردن profile-title در ابتدای هدر
+          echo "//profile-title: Free_Config_Random" > random_header.txt
+          cat temp_header.txt >> random_header.txt
+          rm -f temp_header.txt
 
+          # گرفتن کانفیگ‌ها
           tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
           TOTAL_LINES=$(wc -l < configs_only.txt)
           if [ "$TOTAL_LINES" -le 500 ]; then
@@ -126,6 +129,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
-            git commit -m "🔄 Auto update combined.txt (base64) and combined_random.txt + README"
+            git commit -m "🔄 Auto update combined files and README"
             git push "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}" HEAD:main
           fi
