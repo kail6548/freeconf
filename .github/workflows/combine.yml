@@ -2,7 +2,7 @@ name: Combine Subscription Files
 
 on:
   schedule:
-    - cron: '0 */2 * * *'   # هر ۲ ساعت اجرا می‌شود
+    - cron: '0 */2 * * *'   # هر ۲ ساعت اجرا شود
   workflow_dispatch:
 
 jobs:
@@ -46,23 +46,7 @@ jobs:
       - name: حذف کانفیگ‌های تکراری (Python)
         run: |
           echo "🔍 حذف کانفیگ‌های تکراری..."
-          python3 - <<EOF > combined_cleaned.txt
-seen = set()
-with open("combined.txt", "r") as f:
-    for line in f:
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith("//"):
-            print(line)
-            continue
-        if "://" not in line:
-            continue
-        key = line.split('#')[0].lower()
-        if key not in seen:
-            seen.add(key)
-            print(line)
-EOF
+          python3 remove_duplicates.py > combined_cleaned.txt
           mv combined_cleaned.txt combined.txt
 
           echo "📄 نمایش 10 خط اول combined.txt:"
