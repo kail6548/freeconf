@@ -35,7 +35,6 @@ jobs:
             echo "⬇️ دریافت از $url"
             content=$(curl -s "$url")
 
-            # تشخیص محتوا base64 بودن محتوا
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=\n\r]+$'; then
               decoded=$(echo "$content" | base64 -d 2>/dev/null)
               if [ $? -eq 0 ] && [ -n "$decoded" ]; then
@@ -43,12 +42,11 @@ jobs:
               fi
             fi
 
-            # استخراج کانفیگ‌ها
             configs=$(echo "$content" | grep -E '^(vless|vmess)://' || true)
 
             echo "$configs" >> combined.txt
 
-            # sleep 1 # برای جلوگیری از rate limit در صورت نیاز فعال شود
+            # sleep 1  # برای جلوگیری از rate limit در صورت نیاز فعال شود
           done < urls.txt
 
           echo "📄 محتوای combined.txt (10 خط اول):"
@@ -69,7 +67,7 @@ jobs:
           echo "وضعیت git بعد از افزودن combined.txt:"
           git status
 
-          git diff --quiet && echo "✅ بدون تغییر، نیازی به commit نیست." || (
+          git diff --cached --quiet && echo "✅ بدون تغییر، نیازی به commit نیست." || (
             git commit -m "🔄 Auto update combined subscription" &&
             git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }} HEAD:main
           )
