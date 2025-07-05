@@ -1,0 +1,11 @@
+//profile-title: Free_Config
+//profile-update-interval: 1
+//subscription-userinfo: upload=0; download=0; total=10737418240000000; expire=2546249531
+
+https://raw.githubusercontent.com/4n0nymou3/multi-proxy-config-fetcher/refs/heads/main/configs/proxy_configs.txt
+
+https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
+
+https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/channels
+
+https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/subscribe
