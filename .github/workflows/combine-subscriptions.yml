@@ -26,23 +26,26 @@ jobs:
 
           while read -r url; do
             echo "⬇️ دریافت از $url"
-            content=$(curl -s --max-time 15 "$url" || echo "")
+            content=$(curl -fsSL --max-time 15 "$url" || true)
             if [ -z "$content" ]; then
               echo "⚠️ دریافت ناموفق از $url، ادامه می‌دهیم..."
               continue
             fi
 
-            # چک کردن اینکه محتوا base64 هست یا نه
+            # بررسی احتمال base64 بودن محتوا
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
-              decoded=$(echo "$content" | base64 -d 2>/dev/null || echo "")
+              decoded=$(echo "$content" | base64 -d 2>/dev/null || true)
               if [ -n "$decoded" ]; then
                 content="$decoded"
               fi
             fi
 
-            # استخراج کانفیگ‌ها
             configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
-            echo "$configs" >> combined.txt
+            if [ -n "$configs" ]; then
+              echo "$configs" >> combined.txt
+            else
+              echo "⚠️ هیچ کانفیگی در $url یافت نشد."
+            fi
 
           done < urls.txt
 
