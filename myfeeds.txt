@@ -11,3 +11,5 @@ https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main
 https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/subscribe
 
 https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/refs/heads/main/all_configs.txt
+
+https://www.namira.dev/api/subscription?country=ir
