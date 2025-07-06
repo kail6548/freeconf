@@ -26,7 +26,11 @@ jobs:
 
           while read -r url; do
             echo "⬇️ دریافت از $url"
-            content=$(curl -s "$url")
+            content=$(curl -s --max-time 15 "$url" || echo "")
+            if [ -z "$content" ]; then
+              echo "⚠️ دریافت ناموفق از $url، ادامه می‌دهیم..."
+              continue
+            fi
 
             # چک کردن اینکه محتوا base64 هست یا نه
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
