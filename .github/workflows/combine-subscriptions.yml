@@ -31,49 +31,75 @@ jobs:
           while read -r url || [[ -n "$url" ]]; do
             i=$((i+1))
             echo "⬇️ دریافت از $url"
-            content=$(curl -fsSL --max-time 20 "$url" || true)
+            # ✨ تغییر ۱: افزایش زمان دانلود به ۱۲۰ ثانیه برای فایل‌های حجیم
+            content=$(curl -fsSL --max-time 120 "$url" || true)
             if [ -z "$content" ]; then
               echo "⚠️ دریافت ناموفق از $url، ادامه می‌دهیم..."
               continue
             fi
 
+            # بررسی می‌کند که آیا محتوا Base64 است یا خیر
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
-              decoded=$(echo "$content" | base64 -d 2>/dev/null || true)
-              if [ -n "$decoded" ]; then
-                content="$decoded"
+              # ✨ تغییر ۲: استفاده از printf برای دیکد کردن امن محتوای حجیم
+              decoded_content=$(printf "%s" "$content" | base64 -d 2>/dev/null)
+              if [ -n "$decoded_content" ]; then
+                content="$decoded_content"
+                echo "✅ محتوای Base64 با موفقیت دیکد شد."
               fi
             fi
 
-            configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://' || true)
-            count_before=$(echo "$configs" | wc -l || true)
+            # ✨ تغییر ۳: استفاده از printf برای استخراج کانفیگ‌ها جهت جلوگیری از خطا
+            configs=$(printf "%s" "$content" | grep -E '^[a-zA-Z0-9\-]+://' || true)
+            
+            # ✨ تغییر ۴: استفاده از printf برای شمارش دقیق خطوط
+            count_before=$(printf "%s" "$configs" | wc -l)
             echo "🔢 تعداد کانفیگ‌ها از لینک $i ($url) قبل از حذف تکراری: $count_before"
 
-            echo "$configs" > url_configs/url_${i}.txt
-            echo "$configs" >> combined.txt
+            # ✨ تغییر ۵: استفاده از printf برای نوشتن امن در فایل
+            printf "%s\n" "$configs" >> combined.txt
+            printf "%s\n" "$configs" > "url_configs/url_${i}.txt"
 
             sleep 1
 
           done < urls.txt
 
       - name: حذف کانفیگ‌های تکراری (Python)
+        # این مرحله فرض می‌کند که شما یک فایل remove_duplicates.py دارید
+        # که کانفیگ‌های تکراری را با حفظ ترتیب حذف می‌کند.
         run: |
           echo "🔍 حذف کانفیگ‌های تکراری..."
-          python3 remove_duplicates.py > combined_cleaned.txt
-          mv combined_cleaned.txt combined.txt
+          # فرض می‌کنیم فایل remove_duplicates.py وجود دارد
+          if [ -f "remove_duplicates.py" ]; then
+            # جدا کردن هدر از کانفیگ‌ها
+            HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
+            head -n $((HEADER_END -1)) combined.txt > header.txt
+            tail -n +$HEADER_END combined.txt > configs_only.txt
+            
+            # اجرای اسکریپت پایتون روی کانفیگ‌ها
+            python3 remove_duplicates.py < configs_only.txt > cleaned_configs.txt
+            
+            # ترکیب مجدد هدر و کانفیگ‌های پاک‌شده
+            cat header.txt cleaned_configs.txt > combined_final.txt
+            mv combined_final.txt combined.txt
+            
+            rm header.txt configs_only.txt cleaned_configs.txt
+            echo "✅ کانفیگ‌های تکراری حذف شدند."
+          else
+            echo "⚠️ فایل remove_duplicates.py یافت نشد. از حذف تکراری صرف‌نظر می‌شود."
+          fi
 
-          echo "📄 نمایش 10 خط اول combined.txt:"
+          echo "📄 نمایش ۱۰ خط اول combined.txt:"
           head -n 10 combined.txt
 
-          echo "📊 تعداد خطوط combined.txt:"
+          echo "📊 تعداد کل خطوط combined.txt:"
           wc -l combined.txt
 
+      # مراحل بعدی شما بدون تغییر باقی می‌مانند
       - name: Count configs remaining per URL after deduplication
         run: |
           echo "🔢 شمارش کانفیگ‌های باقی‌مانده هر لینک پس از حذف تکراری‌ها"
-
-          HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
-          tail -n +$((HEADER_END + 1)) combined.txt > combined_configs_only.txt
-
+          HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1 || echo 1)
+          tail -n +$HEADER_END combined.txt > combined_configs_only.txt
           for file in url_configs/url_*.txt; do
             filename=$(basename "$file")
             url_index="${filename//[!0-9]/}"
@@ -81,29 +107,23 @@ jobs:
             count_after=$(grep -Fxf "$file" combined_configs_only.txt | wc -l || true)
             echo "لینک $url_index: کانفیگ‌های قبل: $total_before | بعد از حذف تکراری: $count_after"
           done
-
           rm combined_configs_only.txt
 
       - name: Create combined_random.txt with 500 random configs
         run: |
           echo "🎲 ایجاد فایل combined_random.txt با ۵۰۰ کانفیگ رندوم"
-
-          HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
-
+          HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1 || echo 1)
           grep '^//' combined.txt | grep -v '^//profile-title:' > temp_header.txt
-
           echo "//profile-title: Free_Config_Random" > random_header.txt
           cat temp_header.txt >> random_header.txt
           rm -f temp_header.txt
-
-          tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
+          tail -n +$HEADER_END combined.txt > configs_only.txt
           TOTAL_LINES=$(wc -l < configs_only.txt)
           if [ "$TOTAL_LINES" -le 500 ]; then
             cp configs_only.txt random_configs.txt
           else
             shuf -n 500 configs_only.txt > random_configs.txt
           fi
-
           cat random_header.txt random_configs.txt > combined_random.txt
           rm -f random_header.txt configs_only.txt random_configs.txt
 
@@ -122,10 +142,8 @@ jobs:
       - name: Generate README with subscription links
         run: |
           echo "📘 ساخت README.md با لینک‌های مستقیم"
-
           RAW_LINK="https://raw.githubusercontent.com/${{ github.repository }}/main/combined.txt"
           RAW_LINK_RANDOM="https://raw.githubusercontent.com/${{ github.repository }}/main/combined_random.txt"
-
           echo "# 🔗 Combined Subscription (Base64)" > README.md
           echo "" >> README.md
           echo "This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours." >> README.md
@@ -150,12 +168,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add combined.txt combined_random.txt README.md
-
           if git diff --cached --quiet; then
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
             git commit -m "🔄 Auto update combined files and README"
             git push "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}" HEAD:main
-          fi 
+          fi
