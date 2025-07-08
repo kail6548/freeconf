@@ -56,8 +56,9 @@ jobs:
             base64 -d temp_content.txt > temp_decoded.txt 2>/dev/null
             # بررسی می‌کنیم که آیا دیکود موفقیت‌آمیز بوده (فایل خروجی خالی نیست)
             if [ -s temp_decoded.txt ]; then
-              # اگر موفق بود، بررسی می‌کنیم آیا محتوای دیکود شده شامل کانفیگ معتبر است
-              if grep -q -E '^[a-zA-Z0-9\-]+://' temp_decoded.txt; then
+              # با شمارش خطوط، از خطای خروج grep جلوگیری می‌کنیم
+              MATCH_COUNT=$(grep -c -E '^[a-zA-Z0-9\-]+://' temp_decoded.txt)
+              if [ "$MATCH_COUNT" -gt 0 ]; then
                 is_base64_and_valid=true
               fi
             fi
