@@ -24,6 +24,9 @@ jobs:
           echo "📝 نوشتن هدرها در combined.txt"
           echo "$HEADER_LINES" > combined.txt
 
+          total_configs=0
+          total_links=0
+
           while read -r url || [[ -n "$url" ]]; do
             echo "⬇️ دریافت از $url"
             content=$(curl -fsSL --max-time 20 "$url" || true)
@@ -32,7 +35,7 @@ jobs:
               continue
             fi
 
-            # بررسی احتمال base64 بودن محتوا
+            # احتمال base64 بودن
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
               decoded=$(echo "$content" | base64 -d 2>/dev/null || true)
               if [ -n "$decoded" ]; then
@@ -40,31 +43,23 @@ jobs:
               fi
             fi
 
-            # استفاده از grep بدون pipe برای جلوگیری از Broken pipe
-            grep -E '^[a-zA-Z0-9\-]+://' <<< "$content" >> combined.txt || true
+            configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
+            count=$(echo "$configs" | wc -l)
 
-            sleep 1  # کاهش فشار روی حافظه
+            echo "📊 $url: $count کانفیگ"
 
+            if [ "$count" -gt 0 ]; then
+              echo "$configs" >> combined.txt
+              total_configs=$((total_configs + count))
+              total_links=$((total_links + 1))
+            fi
+
+            sleep 1
           done < urls.txt
 
-          # شمارش کانفیگ های هر لینک جداگانه
-          echo "" >> combined.txt
-          echo "// 📊 تعداد کانفیگ‌ها از هر لینک:" >> combined.txt
-          while read -r url || [[ -n "$url" ]]; do
-            content=$(curl -fsSL --max-time 20 "$url" || true)
-            if [ -z "$content" ]; then
-              echo "// $url: دریافت ناموفق" >> combined.txt
-              continue
-            fi
-            if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
-              decoded=$(echo "$content" | base64 -d 2>/dev/null || true)
-              if [ -n "$decoded" ]; then
-                content="$decoded"
-              fi
-            fi
-            count=$(grep -cE '^[a-zA-Z0-9\-]+://' <<< "$content" || true)
-            echo "// $url: $count کانفیگ" >> combined.txt
-          done < urls.txt
+          echo ""
+          echo "✅ مجموع کانفیگ‌ها: $total_configs"
+          echo "✅ تعداد لینک‌های موفق: $total_links"
 
       - name: حذف کانفیگ‌های تکراری (Python)
         run: |
