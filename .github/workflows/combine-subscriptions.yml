@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Combine configs from URLs and count per URL
+      - name: Combine configs from URLs with counts
         run: |
           echo "📄 خواندن هدرهای myfeeds.txt"
           HEADER_LINES=$(grep '^//' myfeeds.txt)
@@ -24,21 +24,19 @@ jobs:
           echo "📝 نوشتن هدرها در combined.txt"
           echo "$HEADER_LINES" > combined.txt
 
-          echo "📝 استخراج و ذخیره کانفیگ‌ها به فایل‌های جداگانه برای هر لینک"
           mkdir -p url_configs
           rm -f url_configs/*.txt
 
           i=0
-          while read -r url; do
+          while read -r url || [[ -n "$url" ]]; do
             i=$((i+1))
             echo "⬇️ دریافت از $url"
-            content=$(curl -fsSL --max-time 15 "$url" || true)
+            content=$(curl -fsSL --max-time 20 "$url" || true)
             if [ -z "$content" ]; then
               echo "⚠️ دریافت ناموفق از $url، ادامه می‌دهیم..."
               continue
             fi
 
-            # بررسی احتمال base64 بودن محتوا
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
               decoded=$(echo "$content" | base64 -d 2>/dev/null || true)
               if [ -n "$decoded" ]; then
@@ -46,15 +44,14 @@ jobs:
               fi
             fi
 
-            configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
-            count_before=$(echo "$configs" | wc -l)
+            configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://' || true)
+            count_before=$(echo "$configs" | wc -l || true)
             echo "🔢 تعداد کانفیگ‌ها از لینک $i ($url) قبل از حذف تکراری: $count_before"
 
-            # ذخیره کانفیگ‌های این لینک در فایل جداگانه
             echo "$configs" > url_configs/url_${i}.txt
-
-            # اضافه کردن کانفیگ‌ها به combined.txt (برای deduplication کل)
             echo "$configs" >> combined.txt
+
+            sleep 1
 
           done < urls.txt
 
@@ -81,8 +78,7 @@ jobs:
             filename=$(basename "$file")
             url_index="${filename//[!0-9]/}"
             total_before=$(wc -l < "$file")
-            # پیدا کردن تعداد کانفیگ‌های باقی‌مانده در combined.txt که در این فایل هم هستند
-            count_after=$(grep -Fxf "$file" combined_configs_only.txt | wc -l)
+            count_after=$(grep -Fxf "$file" combined_configs_only.txt | wc -l || true)
             echo "لینک $url_index: کانفیگ‌های قبل: $total_before | بعد از حذف تکراری: $count_after"
           done
 
@@ -94,15 +90,12 @@ jobs:
 
           HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
 
-          # حذف profile-title و نگه‌داشتن بقیه‌ی هدر
           grep '^//' combined.txt | grep -v '^//profile-title:' > temp_header.txt
 
-          # اضافه کردن profile-title در ابتدای هدر
           echo "//profile-title: Free_Config_Random" > random_header.txt
           cat temp_header.txt >> random_header.txt
           rm -f temp_header.txt
 
-          # گرفتن کانفیگ‌ها
           tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
           TOTAL_LINES=$(wc -l < configs_only.txt)
           if [ "$TOTAL_LINES" -le 500 ]; then
