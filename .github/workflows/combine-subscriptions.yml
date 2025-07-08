@@ -58,33 +58,39 @@ jobs:
             tr -cd '[:print:]\n' < temp_content.original > temp_content.txt
             rm temp_content.original
 
-            # ✨ تغییر کلیدی: معماری جدید مبتنی بر پردازش خط به خط برای حداکثر دقت
-            echo "🔎 در حال پردازش خط به خط فایل..."
+            # ✨ معماری جدید و نهایی: پردازش دو مرحله‌ای برای حداکثر دقت
             > url_temp_configs.txt
-
+            
             CONFIG_PATTERN='^(vmess|vless|trojan|ss|ssr|tuic|hy|hy2|hysteria|hysteria2|wg|sb|shadowsocks|ssconf|juicity|naive|socks|http):\/\/'
-            BASE64_PATTERN='^[A-Za-z0-9+\/]{20,}[=]{0,2}$'
+            AWK_CMD="awk 'BEGIN{IGNORECASE=1} /$CONFIG_PATTERN/ && length(\$0) > 40'"
 
-            while IFS= read -r line || [[ -n "$line" ]]; do
-                # حذف کاراکترهای نامرئی احتمالی از خود خط
-                line=$(echo "$line" | tr -d '\r')
+            # --- مرحله ۱: استخراج کانفیگ‌های متنی (Plain Text) ---
+            echo "🔎 مرحله ۱: استخراج کانفیگ‌های متنی..."
+            eval "$AWK_CMD" temp_content.txt >> url_temp_configs.txt
+            count_plain=$(wc -l < url_temp_configs.txt)
+            echo "   -> یافت شده: $count_plain"
 
-                # بررسی حالت اول: کانفیگ متنی مستقیم
-                if [[ $line =~ $CONFIG_PATTERN ]] && [ ${#line} -gt 40 ]; then
-                    echo "$line" >> url_temp_configs.txt
-                    continue
-                fi
-
-                # بررسی حالت دوم: کانفیگ کدگذاری شده با Base64
-                if [[ $line =~ $BASE64_PATTERN ]]; then
-                    decoded_line=$(echo "$line" | base64 -d 2>/dev/null)
-                    if [[ $decoded_line =~ $CONFIG_PATTERN ]] && [ ${#decoded_line} -gt 40 ]; then
-                        echo "$decoded_line" >> url_temp_configs.txt
-                    fi
-                fi
-            done < temp_content.txt
-
-            # حذف تکراری‌های محلی و ذخیره نتیجه نهایی
+            # --- مرحله ۲: پردازش کل فایل به عنوان یک بلاک Base64 ---
+            echo "🔎 مرحله ۲: پردازش کل فایل به عنوان Base64..."
+            # این دستور تمام خطوط را به هم می‌چسباند و به عنوان یک بلاک واحد دیکود می‌کند
+            # این روش برای فایل‌هایی که یک بلاک Base64 چند خطی هستند، ضروری است
+            tr -d '\n\r' < temp_content.txt | base64 -d --ignore-garbage 2>/dev/null > temp_decoded_full.txt
+            if [ -s temp_decoded_full.txt ]; then
+              # پاک‌سازی محتوای دیکود شده
+              mv temp_decoded_full.txt temp_decoded_full.original
+              tr -cd '[:print:]\n' < temp_decoded_full.original > temp_decoded_full.txt
+              rm temp_decoded_full.original
+              
+              eval "$AWK_CMD" temp_decoded_full.txt >> url_temp_configs.txt
+              rm temp_decoded_full.txt
+            else
+              echo "   -> محتوا به عنوان یک بلاک کامل Base64 قابل پردازش نیست."
+            fi
+            
+            # --- مرحله ۳: حذف تکراری‌ها و نهایی‌سازی ---
+            echo "🔎 مرحله ۳: حذف تکراری‌ها و نهایی‌سازی..."
+            count_total_before_dedup=$(wc -l < url_temp_configs.txt)
+            echo "   -> کل کانفیگ‌های یافت شده (قبل از حذف تکراری): $count_total_before_dedup"
             if [ -s url_temp_configs.txt ]; then
               sort -u url_temp_configs.txt > "url_configs/url_${i}.txt"
               count_final=$(wc -l < "url_configs/url_${i}.txt")
