@@ -17,60 +17,45 @@ jobs:
         run: |
           echo "📄 خواندن هدرهای myfeeds.txt"
           HEADER_LINES=$(grep '^//' myfeeds.txt)
-
           echo "🌐 استخراج لینک‌ها"
           grep -E '^https?://' myfeeds.txt > urls.txt
-
           echo "📝 نوشتن هدرها در combined.txt"
           echo "$HEADER_LINES" > combined.txt
-
-          while read -r url || [[ -n "$url" ]]; do
+          while read -r url; do
             echo "⬇️ دریافت از $url"
-            content=$(curl -fsSL --max-time 20 "$url" || true)
-            if [ -z "$content" ]; then
-              echo "⚠️ دریافت ناموفق از $url، ادامه می‌دهیم..."
-              continue
-            fi
-
-            # بررسی احتمال base64 بودن محتوا
+            content=$(curl -s "$url")
+            # چک کردن اینکه محتوا base64 هست یا نه
             if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
-              decoded=$(echo "$content" | base64 -d 2>/dev/null || true)
+              decoded=$(echo "$content" | base64 -d 2>/dev/null || echo "")
               if [ -n "$decoded" ]; then
                 content="$decoded"
               fi
             fi
-
-            # نوشتن مستقیم بدون echo برای جلوگیری از Broken Pipe
-            echo "$content" | grep -E '^[a-zA-Z0-9\-]+://' >> combined.txt || true
-
-            sleep 1  # کاهش فشار روی حافظه
-
+            # استخراج کانفیگ‌ها
+            configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
+            echo "$configs" >> combined.txt
           done < urls.txt
-
       - name: حذف کانفیگ‌های تکراری (Python)
         run: |
           echo "🔍 حذف کانفیگ‌های تکراری..."
           python3 remove_duplicates.py > combined_cleaned.txt
           mv combined_cleaned.txt combined.txt
-
           echo "📄 نمایش 10 خط اول combined.txt:"
           head -n 10 combined.txt
-
           echo "📊 تعداد خطوط combined.txt:"
           wc -l combined.txt
-
       - name: Create combined_random.txt with 500 random configs
         run: |
           echo "🎲 ایجاد فایل combined_random.txt با ۵۰۰ کانفیگ رندوم"
-
+          
           HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
-
+          # حذف profile-title و نگه‌داشتن بقیه‌ی هدر
           grep '^//' combined.txt | grep -v '^//profile-title:' > temp_header.txt
-
+          # اضافه کردن profile-title در ابتدای هدر
           echo "//profile-title: Free_Config_Random" > random_header.txt
           cat temp_header.txt >> random_header.txt
           rm -f temp_header.txt
-
+          # گرفتن کانفیگ‌ها
           tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
           TOTAL_LINES=$(wc -l < configs_only.txt)
           if [ "$TOTAL_LINES" -le 500 ]; then
@@ -78,29 +63,23 @@ jobs:
           else
             shuf -n 500 configs_only.txt > random_configs.txt
           fi
-
           cat random_header.txt random_configs.txt > combined_random.txt
           rm -f random_header.txt configs_only.txt random_configs.txt
-
       - name: Encode combined.txt to base64 (overwrite original)
         run: |
           echo "🔐 تبدیل combined.txt به base64..."
           base64 -w 0 combined.txt > tmp.txt && mv tmp.txt combined.txt
           echo "✅ فایل base64 شده در combined.txt ذخیره شد."
-
       - name: Encode combined_random.txt to base64 (overwrite original)
         run: |
           echo "🔐 تبدیل combined_random.txt به base64..."
           base64 -w 0 combined_random.txt > tmp_random.txt && mv tmp_random.txt combined_random.txt
           echo "✅ فایل base64 شده در combined_random.txt ذخیره شد."
-
       - name: Generate README with subscription links
         run: |
           echo "📘 ساخت README.md با لینک‌های مستقیم"
-
           RAW_LINK="https://raw.githubusercontent.com/${{ github.repository }}/main/combined.txt"
           RAW_LINK_RANDOM="https://raw.githubusercontent.com/${{ github.repository }}/main/combined_random.txt"
-
           echo "# 🔗 Combined Subscription (Base64)" > README.md
           echo "" >> README.md
           echo "This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours." >> README.md
@@ -118,16 +97,13 @@ jobs:
           echo '```' >> README.md
           echo "" >> README.md
           echo "Updated automatically via GitHub Actions." >> README.md
-
       - name: Commit and push if changed
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add combined.txt combined_random.txt README.md
-
           if git diff --cached --quiet; then
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
