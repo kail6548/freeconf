@@ -53,43 +53,38 @@ jobs:
             fi
             echo "📦 حجم فایل دانلود شده: $(du -h temp_content.txt | cut -f1)"
 
-            # ✨ تغییر ۱: پاک‌سازی فایل برای حذف کاراکترهای خراب
-            # این کار از توقف ناقص پردازش در فایل‌های حجیم جلوگیری می‌کند
+            # پاک‌سازی فایل برای حذف کاراکترهای خراب
             mv temp_content.txt temp_content.original
             tr -cd '[:print:]\n' < temp_content.original > temp_content.txt
             rm temp_content.original
 
-            # ✨ تغییر ۲: استفاده از روش پردازش سه مرحله‌ای برای حداکثر دقت
+            # ✨ تغییر کلیدی: معماری جدید مبتنی بر پردازش خط به خط برای حداکثر دقت
+            echo "🔎 در حال پردازش خط به خط فایل..."
             > url_temp_configs.txt
 
-            # الگوهای مورد استفاده
             CONFIG_PATTERN='^(vmess|vless|trojan|ss|ssr|tuic|hy|hy2|hysteria|hysteria2|wg|sb|shadowsocks|ssconf|juicity|naive|socks|http):\/\/'
-            BASE64_PATTERN='^[A-Za-z0-9+\/]{50,}[=]{0,2}$'
-            AWK_CMD="awk -v pattern=\"$CONFIG_PATTERN\" 'BEGIN{IGNORECASE=1} \$0 ~ pattern && length(\$0) > 40'"
+            BASE64_PATTERN='^[A-Za-z0-9+\/]{20,}[=]{0,2}$'
 
-            # مرحله ۱: استخراج کانفیگ‌های متنی (Plain Text)
-            echo "🔎 مرحله ۱: استخراج کانفیگ‌های متنی..."
-            eval "$AWK_CMD" temp_content.txt >> url_temp_configs.txt
-            count_plain=$(wc -l < url_temp_configs.txt)
-            echo "   -> یافت شده: $count_plain"
+            while IFS= read -r line || [[ -n "$line" ]]; do
+                # حذف کاراکترهای نامرئی احتمالی از خود خط
+                line=$(echo "$line" | tr -d '\r')
 
-            # مرحله ۲: استخراج و دیکود کردن بلاک‌های Base64
-            echo "🔎 مرحله ۲: استخراج و پردازش بلاک‌های Base64..."
-            awk -v b64pattern="$BASE64_PATTERN" '$0 ~ b64pattern' temp_content.txt > temp_base64_blocks.txt
-            if [ -s temp_base64_blocks.txt ]; then
-              base64 -d temp_base64_blocks.txt > temp_decoded_content.txt 2>/dev/null || true
-              if [ -s temp_decoded_content.txt ]; then
-                eval "$AWK_CMD" temp_decoded_content.txt >> url_temp_configs.txt
-                echo "   -> بلاک‌های Base64 پردازش شدند."
-              fi
-              rm -f temp_decoded_content.txt
-            fi
-            rm -f temp_base64_blocks.txt
+                # بررسی حالت اول: کانفیگ متنی مستقیم
+                if [[ $line =~ $CONFIG_PATTERN ]] && [ ${#line} -gt 40 ]; then
+                    echo "$line" >> url_temp_configs.txt
+                    continue
+                fi
 
-            # مرحله ۳: حذف تکراری‌های محلی و ذخیره نتیجه نهایی
-            echo "🔎 مرحله ۳: حذف تکراری‌ها و نهایی‌سازی..."
-            count_total_before_dedup=$(wc -l < url_temp_configs.txt)
-            echo "   -> کل کانفیگ‌های یافت شده (قبل از حذف تکراری): $count_total_before_dedup"
+                # بررسی حالت دوم: کانفیگ کدگذاری شده با Base64
+                if [[ $line =~ $BASE64_PATTERN ]]; then
+                    decoded_line=$(echo "$line" | base64 -d 2>/dev/null)
+                    if [[ $decoded_line =~ $CONFIG_PATTERN ]] && [ ${#decoded_line} -gt 40 ]; then
+                        echo "$decoded_line" >> url_temp_configs.txt
+                    fi
+                fi
+            done < temp_content.txt
+
+            # حذف تکراری‌های محلی و ذخیره نتیجه نهایی
             if [ -s url_temp_configs.txt ]; then
               sort -u url_temp_configs.txt > "url_configs/url_${i}.txt"
               count_final=$(wc -l < "url_configs/url_${i}.txt")
