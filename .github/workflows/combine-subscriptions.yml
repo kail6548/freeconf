@@ -16,74 +16,90 @@ jobs:
       - name: Combine configs from URLs with counts
         run: |
           echo "📄 خواندن هدرهای myfeeds.txt"
-          HEADER_LINES=$(grep '^//' myfeeds.txt)
+          grep '^//' myfeeds.txt > header.txt
 
           echo "🌐 استخراج لینک‌ها"
           grep -E '^https?://' myfeeds.txt > urls.txt
 
-          echo "📝 نوشتن هدرها در combined.txt"
-          echo "$HEADER_LINES" > combined.txt
+          # ایجاد فایل نهایی با هدر
+          cat header.txt > combined.txt
+          rm header.txt
 
           mkdir -p url_configs
           rm -f url_configs/*.txt
+          
+          # یک فایل موقت برای نگهداری تمام کانفیگ‌ها قبل از افزودن به فایل نهایی
+          > all_configs.txt
 
           i=0
           while read -r url || [[ -n "$url" ]]; do
             i=$((i+1))
             echo "⬇️ دریافت از $url"
-            # ✨ تغییر ۱: افزایش زمان دانلود به ۱۲۰ ثانیه برای فایل‌های حجیم
-            content=$(curl -fsSL --max-time 120 "$url" || true)
-            if [ -z "$content" ]; then
-              echo "⚠️ دریافت ناموفق از $url، ادامه می‌دهیم..."
+            
+            # ✨ تغییر اصلی: دانلود مستقیم به فایل برای جلوگیری از مصرف حافظه
+            curl -fsSL --max-time 180 "$url" -o temp_content.txt
+            
+            # بررسی می‌کند که فایل خالی نباشد
+            if [ ! -s temp_content.txt ]; then
+              echo "⚠️ دریافت ناموفق یا فایل خالی از $url، ادامه می‌دهیم..."
+              rm -f temp_content.txt
               continue
             fi
 
-            # بررسی می‌کند که آیا محتوا Base64 است یا خیر
-            if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
-              # ✨ تغییر ۲: استفاده از printf برای دیکد کردن امن محتوای حجیم
-              decoded_content=$(printf "%s" "$content" | base64 -d 2>/dev/null)
-              if [ -n "$decoded_content" ]; then
-                content="$decoded_content"
+            # بررسی می‌کند که آیا محتوا Base64 است یا خیر (با بررسی خط اول)
+            if head -n 1 temp_content.txt | grep -qE '^[A-Za-z0-9+/=]+$'; then
+              echo "🤔 محتوا به نظر Base64 می‌رسد. تلاش برای دیکد کردن..."
+              base64 -d temp_content.txt > temp_decoded.txt 2>/dev/null
+              
+              if [ -s temp_decoded.txt ]; then
                 echo "✅ محتوای Base64 با موفقیت دیکد شد."
+                mv temp_decoded.txt temp_content.txt
+              else
+                echo "⚠️ دیکد کردن Base64 ناموفق بود. از محتوای اصلی استفاده می‌شود."
+                rm -f temp_decoded.txt
               fi
             fi
-
-            # ✨ تغییر ۳: استفاده از printf برای استخراج کانفیگ‌ها جهت جلوگیری از خطا
-            configs=$(printf "%s" "$content" | grep -E '^[a-zA-Z0-9\-]+://' || true)
             
-            # ✨ تغییر ۴: استفاده از printf برای شمارش دقیق خطوط
-            count_before=$(printf "%s" "$configs" | wc -l)
-            echo "🔢 تعداد کانفیگ‌ها از لینک $i ($url) قبل از حذف تکراری: $count_before"
-
-            # ✨ تغییر ۵: استفاده از printf برای نوشتن امن در فایل
-            printf "%s\n" "$configs" >> combined.txt
-            printf "%s\n" "$configs" > "url_configs/url_${i}.txt"
-
+            # استخراج کانفیگ‌ها از فایل موقت
+            grep -E '^[a-zA-Z0-9\-]+://' temp_content.txt > "url_configs/url_${i}.txt"
+            
+            count_before=$(wc -l < "url_configs/url_${i}.txt")
+            echo "🔢 تعداد کانفیگ‌ها از لینک $i ($url): $count_before"
+            
+            # افزودن کانفیگ‌های این لینک به مجموع کانفیگ‌ها
+            cat "url_configs/url_${i}.txt" >> all_configs.txt
+            
+            rm temp_content.txt
             sleep 1
-
           done < urls.txt
 
+          # افزودن تمام کانفیگ‌های جمع‌آوری شده به فایل نهایی
+          cat all_configs.txt >> combined.txt
+          rm all_configs.txt
+
       - name: حذف کانفیگ‌های تکراری (Python)
-        # این مرحله فرض می‌کند که شما یک فایل remove_duplicates.py دارید
-        # که کانفیگ‌های تکراری را با حفظ ترتیب حذف می‌کند.
         run: |
           echo "🔍 حذف کانفیگ‌های تکراری..."
-          # فرض می‌کنیم فایل remove_duplicates.py وجود دارد
           if [ -f "remove_duplicates.py" ]; then
-            # جدا کردن هدر از کانفیگ‌ها
-            HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
-            head -n $((HEADER_END -1)) combined.txt > header.txt
-            tail -n +$HEADER_END combined.txt > configs_only.txt
+            # پیدا کردن شماره خط اولین کانفیگ (اولین خطی که با // شروع نمی‌شود)
+            HEADER_END_LINE=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
             
-            # اجرای اسکریپت پایتون روی کانفیگ‌ها
-            python3 remove_duplicates.py < configs_only.txt > cleaned_configs.txt
-            
-            # ترکیب مجدد هدر و کانفیگ‌های پاک‌شده
-            cat header.txt cleaned_configs.txt > combined_final.txt
-            mv combined_final.txt combined.txt
-            
-            rm header.txt configs_only.txt cleaned_configs.txt
-            echo "✅ کانفیگ‌های تکراری حذف شدند."
+            if [ -z "$HEADER_END_LINE" ]; then
+              echo "ℹ️ هیچ کانفیگی برای پاک‌سازی یافت نشد."
+            else
+              echo "🔍 جدا کردن هدر و کانفیگ‌ها..."
+              head -n $((HEADER_END_LINE - 1)) combined.txt > header.txt
+              tail -n +$HEADER_END_LINE combined.txt > configs_only.txt
+              
+              echo "🐍 اجرای اسکریپت پایتون..."
+              python3 remove_duplicates.py < configs_only.txt > cleaned_configs.txt
+              
+              echo "🔄 ترکیب مجدد فایل..."
+              cat header.txt cleaned_configs.txt > combined.txt
+              
+              rm header.txt configs_only.txt cleaned_configs.txt
+              echo "✅ کانفیگ‌های تکراری حذف شدند."
+            fi
           else
             echo "⚠️ فایل remove_duplicates.py یافت نشد. از حذف تکراری صرف‌نظر می‌شود."
           fi
@@ -94,18 +110,19 @@ jobs:
           echo "📊 تعداد کل خطوط combined.txt:"
           wc -l combined.txt
 
-      # مراحل بعدی شما بدون تغییر باقی می‌مانند
       - name: Count configs remaining per URL after deduplication
         run: |
           echo "🔢 شمارش کانفیگ‌های باقی‌مانده هر لینک پس از حذف تکراری‌ها"
           HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1 || echo 1)
           tail -n +$HEADER_END combined.txt > combined_configs_only.txt
           for file in url_configs/url_*.txt; do
-            filename=$(basename "$file")
-            url_index="${filename//[!0-9]/}"
-            total_before=$(wc -l < "$file")
-            count_after=$(grep -Fxf "$file" combined_configs_only.txt | wc -l || true)
-            echo "لینک $url_index: کانفیگ‌های قبل: $total_before | بعد از حذف تکراری: $count_after"
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              url_index="${filename//[!0-9]/}"
+              total_before=$(wc -l < "$file")
+              count_after=$(grep -Fxf "$file" combined_configs_only.txt | wc -l || true)
+              echo "لینک $url_index: کانفیگ‌های قبل: $total_before | بعد از حذف تکراری: $count_after"
+            fi
           done
           rm combined_configs_only.txt
 
