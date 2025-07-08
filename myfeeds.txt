@@ -18,7 +18,7 @@ https://raw.githubusercontent.com/barry-far/V2ray-Config/main/All_Configs_Sub.tx
 
 https://raw.githubusercontent.com/youfoundamin/V2rayCollector/main/mixed_iran.txt
 
-https://raw.githubusercontent.com/mrvcoder/V2rayCollector/main/mixed_iran.txt
+#https://raw.githubusercontent.com/mrvcoder/V2rayCollector/main/mixed_iran.txt
 
 #https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/all_sub.txt
 
