@@ -14,5 +14,11 @@ https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main
 
 https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/refs/heads/main/all_configs.txt
 
+https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/All_Configs_Sub.txt
+
+https://raw.githubusercontent.com/mrvcoder/V2rayCollector/refs/heads/main/mixed_iran.txt
+
+https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/all_sub.txt
+
 https://www.namira.dev/api/subscription?country=ir
 
