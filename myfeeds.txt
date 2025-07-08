@@ -6,11 +6,11 @@ https://raw.githubusercontent.com/4n0nymou3/multi-proxy-config-fetcher/refs/head
 
 https://raw.githubusercontent.com/itsyebekhe/PSG/main/subscriptions/xray/base64/mix
 
-https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
+#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
 
-https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/channels
+#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/channels
 
-https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/subscribe
+#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/subscribe
 
 https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/main/all_configs.txt
 
@@ -18,9 +18,9 @@ https://raw.githubusercontent.com/barry-far/V2ray-Config/main/All_Configs_Sub.tx
 
 https://raw.githubusercontent.com/youfoundamin/V2rayCollector/main/mixed_iran.txt
 
-https://raw.githubusercontent.com/mrvcoder/V2rayCollector/main/mixed_iran.txt
+#https://raw.githubusercontent.com/mrvcoder/V2rayCollector/main/mixed_iran.txt
 
-https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/all_sub.txt
+#https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/all_sub.txt
 
 https://www.namira.dev/api/subscription?country=ir
 
