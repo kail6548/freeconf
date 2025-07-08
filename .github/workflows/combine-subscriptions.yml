@@ -16,14 +16,18 @@ jobs:
       - name: Combine configs from URLs with counts
         run: |
           echo "📄 خواندن هدرهای myfeeds.txt"
-          grep '^//' myfeeds.txt > header.txt
+          grep '^//' myfeeds.txt > header.txt || true
 
           echo "🌐 استخراج لینک‌ها"
-          grep -E '^https?://' myfeeds.txt > urls.txt
+          grep -E '^https?://' myfeeds.txt > urls.txt || true
 
           # ایجاد فایل نهایی با هدر
-          cat header.txt > combined.txt
-          rm header.txt
+          if [ -f "header.txt" ]; then
+            cat header.txt > combined.txt
+            rm header.txt
+          else
+            > combined.txt
+          fi
 
           mkdir -p url_configs
           rm -f url_configs/*.txt
@@ -46,7 +50,7 @@ jobs:
             fi
             echo "📦 حجم فایل دانلود شده: $(du -h temp_content.txt | cut -f1)"
 
-            # ✨ تغییر: استفاده از الگوی کلی برای تشخیص کانفیگ در محتوای Base64
+            # تشخیص و دیکود محتوای Base64
             base64 -d temp_content.txt > temp_decoded.txt 2>/dev/null
             if [ -s temp_decoded.txt ] && grep -q -E '^[a-zA-Z0-9\-]+://' temp_decoded.txt; then
               echo "✅ محتوای Base64 با موفقیت دیکد شد و معتبر است."
@@ -57,8 +61,8 @@ jobs:
               rm -f temp_decoded.txt
             fi
             
-            # ✨ تغییر: بازگرداندن الگوی grep به حالت کلی برای گرفتن همه پروتکل‌ها
-            grep -E '^[a-zA-Z0-9\-]+://' temp_content.txt > "url_configs/url_${i}.txt"
+            # ✨ تغییر کلیدی: افزودن '|| true' برای جلوگیری از خطا در صورت عدم وجود کانفیگ
+            grep -E '^[a-zA-Z0-9\-]+://' temp_content.txt > "url_configs/url_${i}.txt" || true
             
             count_before=$(wc -l < "url_configs/url_${i}.txt")
             echo "🔢 تعداد کانفیگ‌های یافت شده: $count_before"
