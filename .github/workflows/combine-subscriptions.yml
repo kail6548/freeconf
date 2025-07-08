@@ -24,9 +24,9 @@ jobs:
           echo "📝 نوشتن هدرها در combined.txt"
           echo "$HEADER_LINES" > combined.txt
 
-          while read -r url; do
+          while read -r url || [[ -n "$url" ]]; do
             echo "⬇️ دریافت از $url"
-            content=$(curl -fsSL --max-time 15 "$url" || true)
+            content=$(curl -fsSL --max-time 20 "$url" || true)
             if [ -z "$content" ]; then
               echo "⚠️ دریافت ناموفق از $url، ادامه می‌دهیم..."
               continue
@@ -40,12 +40,10 @@ jobs:
               fi
             fi
 
-            configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://')
-            if [ -n "$configs" ]; then
-              echo "$configs" >> combined.txt
-            else
-              echo "⚠️ هیچ کانفیگی در $url یافت نشد."
-            fi
+            # نوشتن مستقیم بدون echo برای جلوگیری از Broken Pipe
+            echo "$content" | grep -E '^[a-zA-Z0-9\-]+://' >> combined.txt || true
+
+            sleep 1  # کاهش فشار روی حافظه
 
           done < urls.txt
 
@@ -64,18 +62,15 @@ jobs:
       - name: Create combined_random.txt with 500 random configs
         run: |
           echo "🎲 ایجاد فایل combined_random.txt با ۵۰۰ کانفیگ رندوم"
-          
+
           HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
 
-          # حذف profile-title و نگه‌داشتن بقیه‌ی هدر
           grep '^//' combined.txt | grep -v '^//profile-title:' > temp_header.txt
 
-          # اضافه کردن profile-title در ابتدای هدر
           echo "//profile-title: Free_Config_Random" > random_header.txt
           cat temp_header.txt >> random_header.txt
           rm -f temp_header.txt
 
-          # گرفتن کانفیگ‌ها
           tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
           TOTAL_LINES=$(wc -l < configs_only.txt)
           if [ "$TOTAL_LINES" -le 500 ]; then
