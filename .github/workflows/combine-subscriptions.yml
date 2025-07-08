@@ -53,18 +53,30 @@ jobs:
             fi
             echo "📦 حجم فایل دانلود شده: $(du -h temp_content.txt | cut -f1)"
 
-            # ✨ تغییر کلیدی: استفاده از روش پردازش دوگانه برای حداکثر دقت
+            # ✨ تغییر ۱: پاک‌سازی فایل برای حذف کاراکترهای خراب
+            # این کار از توقف ناقص پردازش در فایل‌های حجیم جلوگیری می‌کند
+            mv temp_content.txt temp_content.original
+            tr -cd '[:print:]\n' < temp_content.original > temp_content.txt
+            rm temp_content.original
+
+            # ✨ استفاده از روش پردازش دوگانه برای حداکثر دقت
             > url_temp_configs.txt
 
             # مرحله ۱: پردازش فایل به عنوان متن ساده
-            awk '/^[a-zA-Z0-9\-]+:\/\//' temp_content.txt >> url_temp_configs.txt
+            # ✨ تغییر ۲: افزودن شرط بررسی طول برای افزایش دقت
+            awk '/^[a-zA-Z0-9\-]+:\/\// && length($0) > 40' temp_content.txt >> url_temp_configs.txt
             count_plain=$(wc -l < url_temp_configs.txt)
             echo "🔎 تعداد کانفیگ‌های یافت شده در حالت متنی: $count_plain"
 
             # مرحله ۲: تلاش برای پردازش فایل به عنوان Base64
             base64 -d temp_content.txt > temp_decoded.txt 2>/dev/null || true
             if [ -s temp_decoded.txt ]; then
-              awk '/^[a-zA-Z0-9\-]+:\/\//' temp_decoded.txt >> url_temp_configs.txt
+              # پاک‌سازی فایل دیکود شده
+              mv temp_decoded.txt temp_decoded.original
+              tr -cd '[:print:]\n' < temp_decoded.original > temp_decoded.txt
+              rm temp_decoded.original
+              
+              awk '/^[a-zA-Z0-9\-]+:\/\// && length($0) > 40' temp_decoded.txt >> url_temp_configs.txt
               count_base64=$(wc -l < url_temp_configs.txt)
               echo "🔎 تعداد کل کانفیگ‌ها پس از بررسی Base64: $count_base64"
             fi
