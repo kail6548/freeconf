@@ -15,95 +15,157 @@ jobs:
 
       - name: Combine configs from URLs with counts
         run: |
+          # جلوگیری از توقف اسکریپت در صورت بروز خطای غیرمنتظره در یک دستور
+          set +e
+
           echo "📄 خواندن هدرهای myfeeds.txt"
-          HEADER_LINES=$(grep '^//' myfeeds.txt)
+          grep '^//' myfeeds.txt > header.txt || true
 
           echo "🌐 استخراج لینک‌ها"
-          grep -E '^https?://' myfeeds.txt > urls.txt
+          grep -E '^https?://' myfeeds.txt > urls.txt || true
 
-          echo "📝 نوشتن هدرها در combined.txt"
-          echo "$HEADER_LINES" > combined.txt
+          # ایجاد فایل نهایی با هدر
+          if [ -f "header.txt" ]; then
+            cat header.txt > combined.txt
+            rm header.txt
+          else
+            > combined.txt
+          fi
 
           mkdir -p url_configs
           rm -f url_configs/*.txt
+          
+          > all_configs.txt
 
           i=0
           while read -r url || [[ -n "$url" ]]; do
             i=$((i+1))
-            echo "⬇️ دریافت از $url"
-            content=$(curl -fsSL --max-time 20 "$url" || true)
-            if [ -z "$content" ]; then
-              echo "⚠️ دریافت ناموفق از $url، ادامه می‌دهیم..."
+            echo "-----------------------------------------------------"
+            echo "⬇️ پردازش لینک $i: $url"
+            
+            echo "📥 در حال دانلود..."
+            curl -L --retry 3 --connect-timeout 30 --max-time 300 -fsS "$url" -o temp_content.txt
+            
+            if [ ! -s temp_content.txt ]; then
+              echo "⚠️ دریافت ناموفق یا فایل خالی از $url، ادامه می‌دهیم..."
+              rm -f temp_content.txt
               continue
             fi
+            echo "📦 حجم فایل دانلود شده: $(du -h temp_content.txt | cut -f1)"
 
-            if echo "$content" | grep -qE '^[A-Za-z0-9+/=[:space:]]+$'; then
-              decoded=$(echo "$content" | base64 -d 2>/dev/null || true)
-              if [ -n "$decoded" ]; then
-                content="$decoded"
-              fi
+            # پاک‌سازی فایل برای حذف کاراکترهای خراب
+            mv temp_content.txt temp_content.original
+            tr -cd '[:print:]\n' < temp_content.original > temp_content.txt
+            rm temp_content.original
+
+            # ✨ معماری جدید و نهایی: پردازش دو مرحله‌ای برای حداکثر دقت
+            > url_temp_configs.txt
+            
+            CONFIG_PATTERN='^(vmess|vless|trojan|ss|ssr|tuic|hy|hy2|hysteria|hysteria2|wg|sb|shadowsocks|ssconf|juicity|naive|socks|http):\/\/'
+            AWK_CMD="awk 'BEGIN{IGNORECASE=1} /$CONFIG_PATTERN/ && length(\$0) > 40'"
+
+            # --- مرحله ۱: استخراج کانفیگ‌های متنی (Plain Text) ---
+            echo "🔎 مرحله ۱: استخراج کانفیگ‌های متنی..."
+            eval "$AWK_CMD" temp_content.txt >> url_temp_configs.txt
+            count_plain=$(wc -l < url_temp_configs.txt)
+            echo "   -> یافت شده: $count_plain"
+
+            # --- مرحله ۲: پردازش کل فایل به عنوان یک بلاک Base64 ---
+            echo "🔎 مرحله ۲: پردازش کل فایل به عنوان Base64..."
+            # این دستور تمام خطوط را به هم می‌چسباند و به عنوان یک بلاک واحد دیکود می‌کند
+            # این روش برای فایل‌هایی که یک بلاک Base64 چند خطی هستند، ضروری است
+            tr -d '\n\r' < temp_content.txt | base64 -d --ignore-garbage 2>/dev/null > temp_decoded_full.txt
+            if [ -s temp_decoded_full.txt ]; then
+              # پاک‌سازی محتوای دیکود شده
+              mv temp_decoded_full.txt temp_decoded_full.original
+              tr -cd '[:print:]\n' < temp_decoded_full.original > temp_decoded_full.txt
+              rm temp_decoded_full.original
+              
+              eval "$AWK_CMD" temp_decoded_full.txt >> url_temp_configs.txt
+              rm temp_decoded_full.txt
+            else
+              echo "   -> محتوا به عنوان یک بلاک کامل Base64 قابل پردازش نیست."
             fi
-
-            configs=$(echo "$content" | grep -E '^[a-zA-Z0-9\-]+://' || true)
-            count_before=$(echo "$configs" | wc -l || true)
-            echo "🔢 تعداد کانفیگ‌ها از لینک $i ($url) قبل از حذف تکراری: $count_before"
-
-            echo "$configs" > url_configs/url_${i}.txt
-            echo "$configs" >> combined.txt
-
+            
+            # --- مرحله ۳: حذف تکراری‌ها و نهایی‌سازی ---
+            echo "🔎 مرحله ۳: حذف تکراری‌ها و نهایی‌سازی..."
+            count_total_before_dedup=$(wc -l < url_temp_configs.txt)
+            echo "   -> کل کانفیگ‌های یافت شده (قبل از حذف تکراری): $count_total_before_dedup"
+            if [ -s url_temp_configs.txt ]; then
+              sort -u url_temp_configs.txt > "url_configs/url_${i}.txt"
+              count_final=$(wc -l < "url_configs/url_${i}.txt")
+              echo "🔢 تعداد نهایی کانفیگ‌های یکتا برای این لینک: $count_final"
+              cat "url_configs/url_${i}.txt" >> all_configs.txt
+            else
+              echo "🔢 تعداد نهایی کانفیگ‌های یکتا برای این لینک: 0"
+            fi
+            
+            rm -f url_temp_configs.txt temp_content.txt
             sleep 1
-
           done < urls.txt
+
+          # افزودن تمام کانفیگ‌های جمع‌آوری شده به فایل نهایی
+          mv all_configs.txt temp_all_configs.txt
+          cat temp_all_configs.txt >> combined.txt
+          rm temp_all_configs.txt
 
       - name: حذف کانفیگ‌های تکراری (Python)
         run: |
-          echo "🔍 حذف کانفیگ‌های تکراری..."
-          python3 remove_duplicates.py > combined_cleaned.txt
-          mv combined_cleaned.txt combined.txt
-
-          echo "📄 نمایش 10 خط اول combined.txt:"
+          echo "🔍 حذف کانفیگ‌های تکراری سراسری..."
+          if [ -f "remove_duplicates.py" ]; then
+            HEADER_END_LINE=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
+            if [ -z "$HEADER_END_LINE" ]; then
+              echo "ℹ️ هیچ کانفیگی برای پاک‌سازی یافت نشد."
+            else
+              echo "🔍 جدا کردن هدر و کانفیگ‌ها..."
+              head -n $((HEADER_END_LINE - 1)) combined.txt > header.txt
+              tail -n +$HEADER_END_LINE combined.txt > configs_only.txt
+              echo "🐍 اجرای اسکریپت پایتون..."
+              python3 remove_duplicates.py < configs_only.txt > cleaned_configs.txt
+              echo "🔄 ترکیب مجدد فایل..."
+              cat header.txt cleaned_configs.txt > combined.txt
+              rm header.txt configs_only.txt cleaned_configs.txt
+              echo "✅ کانفیگ‌های تکراری حذف شدند."
+            fi
+          else
+            echo "⚠️ فایل remove_duplicates.py یافت نشد. از حذف تکراری صرف‌نظر می‌شود."
+          fi
+          echo "📄 نمایش ۱۰ خط اول combined.txt:"
           head -n 10 combined.txt
-
-          echo "📊 تعداد خطوط combined.txt:"
+          echo "📊 تعداد کل خطوط combined.txt:"
           wc -l combined.txt
 
       - name: Count configs remaining per URL after deduplication
         run: |
           echo "🔢 شمارش کانفیگ‌های باقی‌مانده هر لینک پس از حذف تکراری‌ها"
-
-          HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
-          tail -n +$((HEADER_END + 1)) combined.txt > combined_configs_only.txt
-
+          HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1 || echo 1)
+          tail -n +$HEADER_END combined.txt > combined_configs_only.txt
           for file in url_configs/url_*.txt; do
-            filename=$(basename "$file")
-            url_index="${filename//[!0-9]/}"
-            total_before=$(wc -l < "$file")
-            count_after=$(grep -Fxf "$file" combined_configs_only.txt | wc -l || true)
-            echo "لینک $url_index: کانفیگ‌های قبل: $total_before | بعد از حذف تکراری: $count_after"
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              url_index="${filename//[!0-9]/}"
+              total_before=$(wc -l < "$file")
+              count_after=$(grep -Fxf "$file" combined_configs_only.txt | wc -l || true)
+              echo "لینک $url_index: کانفیگ‌های قبل: $total_before | بعد از حذف تکراری: $count_after"
+            fi
           done
-
           rm combined_configs_only.txt
 
       - name: Create combined_random.txt with 500 random configs
         run: |
           echo "🎲 ایجاد فایل combined_random.txt با ۵۰۰ کانفیگ رندوم"
-
-          HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
-
+          HEADER_END=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1 || echo 1)
           grep '^//' combined.txt | grep -v '^//profile-title:' > temp_header.txt
-
           echo "//profile-title: Free_Config_Random" > random_header.txt
           cat temp_header.txt >> random_header.txt
           rm -f temp_header.txt
-
-          tail -n +$((HEADER_END + 1)) combined.txt > configs_only.txt
+          tail -n +$HEADER_END combined.txt > configs_only.txt
           TOTAL_LINES=$(wc -l < configs_only.txt)
           if [ "$TOTAL_LINES" -le 500 ]; then
             cp configs_only.txt random_configs.txt
           else
             shuf -n 500 configs_only.txt > random_configs.txt
           fi
-
           cat random_header.txt random_configs.txt > combined_random.txt
           rm -f random_header.txt configs_only.txt random_configs.txt
 
@@ -122,10 +184,8 @@ jobs:
       - name: Generate README with subscription links
         run: |
           echo "📘 ساخت README.md با لینک‌های مستقیم"
-
           RAW_LINK="https://raw.githubusercontent.com/${{ github.repository }}/main/combined.txt"
           RAW_LINK_RANDOM="https://raw.githubusercontent.com/${{ github.repository }}/main/combined_random.txt"
-
           echo "# 🔗 Combined Subscription (Base64)" > README.md
           echo "" >> README.md
           echo "This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours." >> README.md
@@ -150,12 +210,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add combined.txt combined_random.txt README.md
-
           if git diff --cached --quiet; then
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
             git commit -m "🔄 Auto update combined files and README"
             git push "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}" HEAD:main
-          fi 
+          fi
