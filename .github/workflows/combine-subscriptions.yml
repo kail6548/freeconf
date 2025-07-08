@@ -53,18 +53,22 @@ jobs:
             fi
             echo "📦 حجم فایل دانلود شده: $(du -h temp_content.txt | cut -f1)"
 
-            # ✨ تغییر ۱: پاک‌سازی فایل برای حذف کاراکترهای خراب
-            # این کار از توقف ناقص پردازش در فایل‌های حجیم جلوگیری می‌کند
+            # پاک‌سازی فایل برای حذف کاراکترهای خراب
             mv temp_content.txt temp_content.original
             tr -cd '[:print:]\n' < temp_content.original > temp_content.txt
             rm temp_content.original
 
-            # ✨ استفاده از روش پردازش دوگانه برای حداکثر دقت
+            # استفاده از روش پردازش دوگانه برای حداکثر دقت
             > url_temp_configs.txt
 
+            # ✨ تغییر: لیست جامع و نهایی پروتکل‌ها با تمام نام‌های جایگزین
+            CONFIG_PATTERN='^(vmess|vless|trojan|ss|ssr|tuic|hy|hy2|hysteria|hysteria2|wg|sb|shadowsocks|ssconf|juicity|naive|socks|http):\/\/'
+
+            # افزودن عدم حساسیت به حروف بزرگ و کوچک در awk
+            AWK_CMD="awk -v pattern=\"$CONFIG_PATTERN\" 'BEGIN{IGNORECASE=1} \$0 ~ pattern && length(\$0) > 40'"
+
             # مرحله ۱: پردازش فایل به عنوان متن ساده
-            # ✨ تغییر ۲: افزودن شرط بررسی طول برای افزایش دقت
-            awk '/^[a-zA-Z0-9\-]+:\/\// && length($0) > 40' temp_content.txt >> url_temp_configs.txt
+            eval "$AWK_CMD" temp_content.txt >> url_temp_configs.txt
             count_plain=$(wc -l < url_temp_configs.txt)
             echo "🔎 تعداد کانفیگ‌های یافت شده در حالت متنی: $count_plain"
 
@@ -76,7 +80,7 @@ jobs:
               tr -cd '[:print:]\n' < temp_decoded.original > temp_decoded.txt
               rm temp_decoded.original
               
-              awk '/^[a-zA-Z0-9\-]+:\/\// && length($0) > 40' temp_decoded.txt >> url_temp_configs.txt
+              eval "$AWK_CMD" temp_decoded.txt >> url_temp_configs.txt
               count_base64=$(wc -l < url_temp_configs.txt)
               echo "🔎 تعداد کل کانفیگ‌ها پس از بررسی Base64: $count_base64"
             fi
@@ -98,7 +102,6 @@ jobs:
           done < urls.txt
 
           # افزودن تمام کانفیگ‌های جمع‌آوری شده به فایل نهایی
-          # این فایل هنوز حاوی تکراری‌های بین لینک‌های مختلف است
           mv all_configs.txt temp_all_configs.txt
           cat temp_all_configs.txt >> combined.txt
           rm temp_all_configs.txt
