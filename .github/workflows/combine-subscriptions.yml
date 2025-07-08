@@ -47,17 +47,17 @@ jobs:
 
           done < urls.txt
 
-      - name: حذف کانفیگ‌های تکراری (Python)
-        run: |
-          echo "🔍 حذف کانفیگ‌های تکراری..."
-          python3 remove_duplicates.py > combined_cleaned.txt
-          mv combined_cleaned.txt combined.txt
+    #  - name: حذف کانفیگ‌های تکراری (Python)
+    #    run: |
+    #      echo "🔍 حذف کانفیگ‌های تکراری..."
+    #      python3 remove_duplicates.py > combined_cleaned.txt
+    #      mv combined_cleaned.txt combined.txt
 
-          echo "📄 نمایش 10 خط اول combined.txt:"
-          head -n 10 combined.txt
+    #      echo "📄 نمایش 10 خط اول combined.txt:"
+    #      head -n 10 combined.txt
 
-          echo "📊 تعداد خطوط combined.txt:"
-          wc -l combined.txt
+    #      echo "📊 تعداد خطوط combined.txt:"
+    #      wc -l combined.txt
 
       - name: Create combined_random.txt with 500 random configs
         run: |
