@@ -28,46 +28,44 @@ jobs:
           mkdir -p url_configs
           rm -f url_configs/*.txt
           
-          # یک فایل موقت برای نگهداری تمام کانفیگ‌ها قبل از افزودن به فایل نهایی
           > all_configs.txt
 
           i=0
           while read -r url || [[ -n "$url" ]]; do
             i=$((i+1))
-            echo "⬇️ دریافت از $url"
+            echo "-----------------------------------------------------"
+            echo "⬇️ پردازش لینک $i: $url"
             
-            # ✨ تغییر اصلی: دانلود مستقیم به فایل برای جلوگیری از مصرف حافظه
-            curl -fsSL --max-time 180 "$url" -o temp_content.txt
+            echo "📥 در حال دانلود..."
+            curl -L --retry 3 --connect-timeout 30 --max-time 300 -fsS "$url" -o temp_content.txt
             
-            # بررسی می‌کند که فایل خالی نباشد
             if [ ! -s temp_content.txt ]; then
               echo "⚠️ دریافت ناموفق یا فایل خالی از $url، ادامه می‌دهیم..."
               rm -f temp_content.txt
               continue
             fi
+            echo "📦 حجم فایل دانلود شده: $(du -h temp_content.txt | cut -f1)"
 
-            # بررسی می‌کند که آیا محتوا Base64 است یا خیر (با بررسی خط اول)
-            if head -n 1 temp_content.txt | grep -qE '^[A-Za-z0-9+/=]+$'; then
-              echo "🤔 محتوا به نظر Base64 می‌رسد. تلاش برای دیکد کردن..."
-              base64 -d temp_content.txt > temp_decoded.txt 2>/dev/null
-              
-              if [ -s temp_decoded.txt ]; then
-                echo "✅ محتوای Base64 با موفقیت دیکد شد."
-                mv temp_decoded.txt temp_content.txt
-              else
-                echo "⚠️ دیکد کردن Base64 ناموفق بود. از محتوای اصلی استفاده می‌شود."
-                rm -f temp_decoded.txt
-              fi
+            # ✨ تغییر: استفاده از الگوی کلی برای تشخیص کانفیگ در محتوای Base64
+            base64 -d temp_content.txt > temp_decoded.txt 2>/dev/null
+            if [ -s temp_decoded.txt ] && grep -q -E '^[a-zA-Z0-9\-]+://' temp_decoded.txt; then
+              echo "✅ محتوای Base64 با موفقیت دیکد شد و معتبر است."
+              mv temp_decoded.txt temp_content.txt
+              echo "📦 حجم فایل پس از دیکود: $(du -h temp_content.txt | cut -f1)"
+            else
+              echo "ℹ️ محتوا Base64 نیست یا نتیجه معتبر نمی‌باشد. از محتوای اصلی استفاده می‌شود."
+              rm -f temp_decoded.txt
             fi
             
-            # استخراج کانفیگ‌ها از فایل موقت
+            # ✨ تغییر: بازگرداندن الگوی grep به حالت کلی برای گرفتن همه پروتکل‌ها
             grep -E '^[a-zA-Z0-9\-]+://' temp_content.txt > "url_configs/url_${i}.txt"
             
             count_before=$(wc -l < "url_configs/url_${i}.txt")
-            echo "🔢 تعداد کانفیگ‌ها از لینک $i ($url): $count_before"
+            echo "🔢 تعداد کانفیگ‌های یافت شده: $count_before"
             
-            # افزودن کانفیگ‌های این لینک به مجموع کانفیگ‌ها
-            cat "url_configs/url_${i}.txt" >> all_configs.txt
+            if [ "$count_before" -gt 0 ]; then
+              cat "url_configs/url_${i}.txt" >> all_configs.txt
+            fi
             
             rm temp_content.txt
             sleep 1
@@ -81,32 +79,25 @@ jobs:
         run: |
           echo "🔍 حذف کانفیگ‌های تکراری..."
           if [ -f "remove_duplicates.py" ]; then
-            # پیدا کردن شماره خط اولین کانفیگ (اولین خطی که با // شروع نمی‌شود)
             HEADER_END_LINE=$(grep -n -m1 -v '^//' combined.txt | cut -d: -f1)
-            
             if [ -z "$HEADER_END_LINE" ]; then
               echo "ℹ️ هیچ کانفیگی برای پاک‌سازی یافت نشد."
             else
               echo "🔍 جدا کردن هدر و کانفیگ‌ها..."
               head -n $((HEADER_END_LINE - 1)) combined.txt > header.txt
               tail -n +$HEADER_END_LINE combined.txt > configs_only.txt
-              
               echo "🐍 اجرای اسکریپت پایتون..."
               python3 remove_duplicates.py < configs_only.txt > cleaned_configs.txt
-              
               echo "🔄 ترکیب مجدد فایل..."
               cat header.txt cleaned_configs.txt > combined.txt
-              
               rm header.txt configs_only.txt cleaned_configs.txt
               echo "✅ کانفیگ‌های تکراری حذف شدند."
             fi
           else
             echo "⚠️ فایل remove_duplicates.py یافت نشد. از حذف تکراری صرف‌نظر می‌شود."
           fi
-
           echo "📄 نمایش ۱۰ خط اول combined.txt:"
           head -n 10 combined.txt
-
           echo "📊 تعداد کل خطوط combined.txt:"
           wc -l combined.txt
 
