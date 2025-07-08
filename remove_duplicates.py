@@ -1,27 +1,15 @@
-import sys
-
-# یک مجموعه (set) برای ذخیره کلیدهای یکتای کانفیگ‌هایی که قبلاً دیده‌ایم.
-# استفاده از set برای بررسی موارد تکراری بسیار بهینه و سریع است.
-seen_keys = set()
-
-# خواندن ورودی به صورت خط به خط از ورودی استاندارد (stdin).
-# گیت‌هاب اکشن داده‌ها را از این طریق به اسکریپت ارسال می‌کند.
-for line in sys.stdin:
-    # حذف فاصله‌های خالی و کاراکترهای خط جدید از ابتدا و انتهای خط.
-    stripped_line = line.strip()
-
-    # نادیده گرفتن خطوط خالی.
-    if not stripped_line:
-        continue
-
-    # برای حذف دقیق موارد تکراری، فقط بخش اصلی کانفیگ (قبل از علامت #) را در نظر می‌گیریم.
-    # همچنین آن را به حروف کوچک تبدیل می‌کنیم تا مقایسه به حروف بزرگ و کوچک حساس نباشد.
-    # برای مثال، "VLESS://..." و "vless://..." یکسان در نظر گرفته می‌شوند.
-    key = stripped_line.split('#', 1)[0].lower()
-
-    # اگر این کلید را قبلاً ندیده باشیم، یک کانفیگ یکتا است.
-    if key not in seen_keys:
-        # کلید را به مجموعه کانفیگ‌های دیده‌شده اضافه می‌کنیم.
-        seen_keys.add(key)
-        # خط کامل و اصلی را در خروجی چاپ می‌کنیم.
-        print(stripped_line)
+seen = set()
+with open("combined.txt", "r") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("//"):
+            print(line)
+            continue
+        if "://" not in line:
+            continue
+        key = line.split('#')[0].lower()
+        if key not in seen:
+            seen.add(key)
+            print(line)
