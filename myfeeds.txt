@@ -6,7 +6,7 @@ https://raw.githubusercontent.com/4n0nymou3/multi-proxy-config-fetcher/refs/head
 
 https://raw.githubusercontent.com/itsyebekhe/PSG/main/subscriptions/xray/base64/mix
 
-#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
+https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
 
 #https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/channels
 
