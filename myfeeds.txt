@@ -47,7 +47,6 @@ https://www.namira.dev/api/subscription?country=ir
 
 https://msk.vless-balancer.ru/sub/dXNlcl82Nzg4MzMxMjQ5LDE3Njk1MzUzMTkBqGm3A1STd#Subscription
 
-https://chat.tawana.online/sub/tawanaproxy.txt
 
 https://raw.githubusercontent.com/parvinxs/Submahsanetxsparvin/refs/heads/main/Sub.mahsa.xsparvin
 
