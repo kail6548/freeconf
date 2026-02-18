@@ -2,15 +2,36 @@
 //profile-update-interval: 1
 //subscription-userinfo: upload=0; download=0; total=10737418240000000; expire=2546249531
 
+//purvpn
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/chini2.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/game.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/gif.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/iran.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/iranian.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/iranmakhzan.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/link.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/lite.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/newhooshmand.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/newloop2.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/pc.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/povaro.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/purguard.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/purkow.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/shrlockserver.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/t.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/warp.txt
+https://raw.githubusercontent.com/davudsedft/purvpn/main/links/wireguard.txt
+//purvpn
+
 https://raw.githubusercontent.com/4n0nymou3/multi-proxy-config-fetcher/refs/heads/main/configs/proxy_configs.txt
 
 https://raw.githubusercontent.com/itsyebekhe/PSG/main/subscriptions/xray/base64/mix
 
-#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
+//https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
 
-#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/channels
+//https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/channels
 
-#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/subscribe
+//https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/subscribe
 
 https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/main/all_configs.txt
 
@@ -18,9 +39,9 @@ https://raw.githubusercontent.com/barry-far/V2ray-Config/main/All_Configs_Sub.tx
 
 https://raw.githubusercontent.com/youfoundamin/V2rayCollector/main/mixed_iran.txt
 
-#https://raw.githubusercontent.com/mrvcoder/V2rayCollector/main/mixed_iran.txt
+https://raw.githubusercontent.com/mrvcoder/V2rayCollector/main/mixed_iran.txt
 
-#https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/all_sub.txt
+https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/all_sub.txt
 
 https://www.namira.dev/api/subscription?country=ir
 
