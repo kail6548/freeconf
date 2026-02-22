@@ -1,6 +1,6 @@
 # 🔗 Combined Subscription (Base64)
 
-This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours.
+This repository auto-generates a deduplicated, base64-encoded subscription file every 12 hours.
 
 ## 📥 Direct Subscription Links
 
