@@ -5,6 +5,8 @@ on:
     - cron: '0 */12 * * *'   # اجرا هر 12 ساعت
   workflow_dispatch:
 
+permissions:
+  contents: write
 jobs:
   combine:
     runs-on: ubuntu-latest
@@ -188,7 +190,7 @@ jobs:
           RAW_LINK_RANDOM="https://raw.githubusercontent.com/${{ github.repository }}/main/combined_random.txt"
           echo "# 🔗 Combined Subscription (Base64)" > README.md
           echo "" >> README.md
-          echo "This repository auto-generates a deduplicated, base64-encoded subscription file every 2 hours." >> README.md
+          echo "This repository auto-generates a deduplicated, base64-encoded subscription file every 12 hours." >> README.md
           echo "" >> README.md
           echo "## 📥 Direct Subscription Links" >> README.md
           echo "" >> README.md
@@ -205,8 +207,6 @@ jobs:
           echo "Updated automatically via GitHub Actions." >> README.md
 
       - name: Commit and push if changed
-        env:
-          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -215,5 +215,5 @@ jobs:
             echo "✅ بدون تغییر، نیازی به commit نیست."
           else
             git commit -m "🔄 Auto update combined files and README"
-            git push "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}" HEAD:main
+            git push
           fi
