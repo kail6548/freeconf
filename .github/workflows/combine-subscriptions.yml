@@ -44,7 +44,7 @@ jobs:
             echo "⬇️ پردازش لینک $i: $url"
             
             echo "📥 در حال دانلود..."
-            curl -L --retry 3 --connect-timeout 30 --max-time 300 -fsS "$url" -o temp_content.txt
+             curl -L --retry 2 --retry-delay 2 --connect-timeout 10 --max-time 180 --fail --speed-time 15 --speed-limit 200 -sS "$url" -o temp_content.txt
             
             if [ ! -s temp_content.txt ]; then
               echo "⚠️ دریافت ناموفق یا فایل خالی از $url، ادامه می‌دهیم..."
