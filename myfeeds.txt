@@ -2,7 +2,7 @@
 //profile-update-interval: 1
 //subscription-userinfo: upload=0; download=0; total=10737418240000000; expire=2546249531
 
-//purvpn
+#purvpn
 https://raw.githubusercontent.com/davudsedft/purvpn/main/links/chini2.txt
 https://raw.githubusercontent.com/davudsedft/purvpn/main/links/game.txt
 https://raw.githubusercontent.com/davudsedft/purvpn/main/links/gif.txt
@@ -21,17 +21,17 @@ https://raw.githubusercontent.com/davudsedft/purvpn/main/links/shrlockserver.txt
 https://raw.githubusercontent.com/davudsedft/purvpn/main/links/t.txt
 https://raw.githubusercontent.com/davudsedft/purvpn/main/links/warp.txt
 https://raw.githubusercontent.com/davudsedft/purvpn/main/links/wireguard.txt
-//purvpn
+#purvpn
 
 https://raw.githubusercontent.com/4n0nymou3/multi-proxy-config-fetcher/refs/heads/main/configs/proxy_configs.txt
 
 https://raw.githubusercontent.com/itsyebekhe/PSG/main/subscriptions/xray/base64/mix
 
-//https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
+#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
 
-//https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/channels
+#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/channels
 
-//https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/subscribe
+#https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/subscribe
 
 https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/main/all_configs.txt
 
@@ -47,6 +47,9 @@ https://www.namira.dev/api/subscription?country=ir
 
 https://msk.vless-balancer.ru/sub/dXNlcl82Nzg4MzMxMjQ5LDE3Njk1MzUzMTkBqGm3A1STd#Subscription
 
+https://chat.tawana.online/sub/tawanaproxy.txt
+
+https://chat.tawana.online/sub/tawanaproxy1.txt
 
 https://raw.githubusercontent.com/parvinxs/Submahsanetxsparvin/refs/heads/main/Sub.mahsa.xsparvin
 
